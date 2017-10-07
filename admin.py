@@ -65,7 +65,8 @@ def updatePercorsiInRideOffers(test = False):
     import route
     more, cursor = True, None
     while more:
-        records, cursor, more = RideOffer.query(RideOffer.active==True).fetch_page(100, start_cursor=cursor)
+        # not clear if we have to restrict to active RideOffer only
+        records, cursor, more = RideOffer.query().fetch_page(100, start_cursor=cursor)
         updating_records = []
         for r in records:
             old_percorso = convertToUtfIfNeeded(r.percorso)

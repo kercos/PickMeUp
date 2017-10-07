@@ -179,6 +179,19 @@ def sendDocument(chat_id, file_id):
     except:
         report_exception()
 
+def sendExcelDocument(chat_id, sheet_tables, filename='file'):
+    import utility
+    try:
+        xlsData = utility.convert_data_to_spreadsheet(sheet_tables)
+        files = [('document', ('{}.xls'.format(filename), xlsData, 'application/vnd.ms-excel'))]
+        data = {
+            'chat_id': chat_id,
+        }
+        resp = requests.post(key.TELEGRAM_API_URL + 'sendDocument', data=data, files=files)
+        logging.info('Response: {}'.format(resp.text))
+    except:
+        report_exception()
+
 
 # ================================
 # SEND WAITING ACTION

@@ -215,3 +215,9 @@ def removeDuplicatesFromList(list):
         if x not in no_dupicated_list:
             no_dupicated_list.append(x)
     return no_dupicated_list
+
+def emptyStringIfNone(x):
+    return '' if x==None else x
+
+def emptyStringIfZero(x):
+    return '' if x==0 else x

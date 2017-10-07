@@ -84,10 +84,11 @@ def parseMap():
         lon, lat = [float(x) for x in coordinatesString[:2]]
         #point = Point(lat, lon)
         zona = getZonaConainingPoint((lat, lon), zone)
+        if zona is None:
+            print "Fermata {} has no Zona".format(stop)
         zona_stop = encodeFermataKey(zona, stop)
         fermate[zona_stop] = {'zona': zona, 'stop': stop, 'loc': (lat, lon)}
         zone[zona]['stops'].append(stop)
-
 
     return zone, fermate
 
@@ -96,4 +97,8 @@ def checkMap():
     checkZone = all(len(v['stops'])>0 for v in zone.values())
     checkFermate = all(fv['zona'] is not None for fv in fermate.values())
     print "Zone: {} check: {}".format(len(zone), checkZone)
+    if not checkZone:
+        print "Error zones: {}".format([z for z in zone.keys() if len(zone[z]['stops'])==0])
     print "Fermate: {} check: {}".format(len(fermate), checkFermate)
+    if not checkFermate:
+        print "Error fermate: {}".format([f for f in fermate.keys() if fermate[f]['zona'] is None])

@@ -23,8 +23,9 @@ class RideOffer(ndb.Model): #ndb.Model
 
     time_mode = ndb.StringProperty()  # BOTTONE_ADESSO, BOTTONE_OGGI, BOTTONE_PROX_GIORNI, BOTTONE_PROGRAMMATO
 
-    # only for regular rides
+    # only for multi rides (periodico o abiuale)
     programmato = ndb.BooleanProperty(default=False)
+
     programmato_giorni = ndb.IntegerProperty(repeated=True) # Monday is 0 and Sunday is 6
     # also used for prox. ggiorni mode
     # for time start_datetime is used
@@ -44,10 +45,28 @@ class RideOffer(ndb.Model): #ndb.Model
         from route import Route
         return Route.get_by_id(self.percorso)
 
-    def getDepartingTime(self):
+    def getDepartingTimeStr(self):
         import date_time_util as dtu
         #return dtu.formatTime(self.programmato_time)
         return dtu.formatTime(self.start_datetime.time())
+
+    def getProgrammato_giorni_str(self):
+        if self.programmato_giorni:
+            return ', '.join([str(x) for x in self.programmato_giorni])
+        return None
+
+    def getDepartingDateStr(self):
+        import date_time_util as dtu
+        import params
+        date_str = dtu.formatDate(self.start_datetime)
+        if date_str == dtu.formatDate(dtu.nowCET()):
+            date_str += ' (OGGI)'
+        elif date_str == dtu.formatDate(dtu.tomorrow()):
+            date_str += ' (DOMANI)'
+        elif self.programmato_giorni:  # PROX_GIORNI
+            giorno_index = self.programmato_giorni[0]
+            date_str += ' ({})'.format(params.GIORNI_SETTIMANA[giorno_index])
+        return date_str
 
     def getTimeMode(self):
         return convertToUtfIfNeeded(self.time_mode)
@@ -81,23 +100,16 @@ class RideOffer(ndb.Model): #ndb.Model
         msg.append('*Arrivo*: {}'.format(end_fermata))
 
         if self.programmato:
-            giorni = [params.GIORNI_SETTIMANA_FULL[i] for i in self.programmato_giorni]
-            giorni_str = ', '.join(giorni)
-            msg.append('*Ora partenza*: {}'.format(self.getDepartingTime()))
             msg.append('*Tipologia*: {}'.format(self.getTimeMode()))
-            msg.append('*Ogni*: {}'.format(giorni_str))
+            if self.start_datetime:
+                giorni = [params.GIORNI_SETTIMANA_FULL[i] for i in self.programmato_giorni]
+                giorni_str = ', '.join(giorni)
+                msg.append('*Ora partenza*: {}'.format(self.getDepartingTimeStr()))
+                msg.append('*Ogni*: {}'.format(giorni_str))
         else:
             msg.append('*Quando*: {}'.format(self.getTimeMode()))
-            msg.append('*Ora partenza*: {}'.format(self.getDepartingTime()))
-            date_str = dtu.formatDate(self.start_datetime)
-            if date_str == dtu.formatDate(dtu.nowCET()):
-                date_str += ' (OGGI)'
-            elif date_str == dtu.formatDate(dtu.tomorrow()):
-                date_str += ' (DOMANI)'
-            elif self.programmato_giorni: # PROX_GIORNI
-                giorno_index = self.programmato_giorni[0]
-                date_str += ' ({})'.format(params.GIORNI_SETTIMANA[giorno_index])
-            msg.append('*Giorno partenza*: {}'.format(date_str))
+            msg.append('*Giorno partenza*: {}'.format(self.getDepartingDateStr()))
+            msg.append('*Ora partenza*: {}'.format(self.getDepartingTimeStr()))
         if driver_info:
             username = person.getPersonById(self.driver_id).getUsername()  # self.driver_username
             if username is None:
@@ -111,8 +123,6 @@ class RideOffer(ndb.Model): #ndb.Model
             msg.append('*Distanza*: {}'.format(avg_distance))
             msg.append('*Durata*: {}'.format(avg_duration))
         return '\n'.join(msg)
-
-
 
 
 def addRideOffer(driver, start_datetime, percorso,
@@ -133,27 +143,30 @@ def addRideOffer(driver, start_datetime, percorso,
     o.put()
     return o
 
-def filterAndSortOffersPerDay(offers):
+def filterAndSortOffersAbitualiAndPerDay(offers):
     import params
     import date_time_util as dtu
     from datetime import timedelta
 
-    result = [[],[],[],[],[],[],[]]
+    result_abituali = []
+    result_per_day = [[],[],[],[],[],[],[]]
     today = dtu.getWeekday()
     now_dt = dtu.removeTimezone(dtu.nowCET()) - timedelta(minutes=params.TIME_TOLERANCE_MIN)
     now_time = now_dt.time()
     for o in offers:
-        if o.programmato:
+        if o.start_datetime is None: # abituali
+            result_abituali.append(o)
+        elif o.programmato:
             for g in o.programmato_giorni:
                 # exclude those of today which have already happened
                 if g != today or o.start_datetime.time() > now_time: #o.programmato_time > now_time:
-                    result[g].append(o)
+                    result_per_day[g].append(o)
         elif o.start_datetime > now_dt:
             g = dtu.getWeekday(o.start_datetime)
-            result[g].append(o)
-    for results_days in result:
-        results_days.sort(key=lambda x: x.getDepartingTime())
-    return result
+            result_per_day[g].append(o)
+    for results_days in result_per_day:
+        results_days.sort(key=lambda x: x.getDepartingTimeStr())
+    return result_abituali, result_per_day
 
 def getActiveRideOffersQry():
     import params
@@ -174,8 +187,8 @@ def getActiveRideOffersQry():
 
 def getActiveRideOffersCountInWeek():
     offers = getActiveRideOffersQry().fetch()
-    offers_list_per_day = filterAndSortOffersPerDay(offers)
-    count = sum([len(d) for d in offers_list_per_day])
+    offers_abituali, offers_list_per_day = filterAndSortOffersAbitualiAndPerDay(offers)
+    count = len(offers_abituali) + sum([len(d) for d in offers_list_per_day])
     return count
 
 def getRideOfferInsertedLastDaysQry(days):
@@ -214,18 +227,15 @@ def getActiveRideOffersDriver(driver_id):
     ).order(RideOffer.start_datetime)
     return qry.fetch()
 
-def getActiveRideOffersSortedPerDay(percorso_passeggero):
-    from route import Route
+def getActiveRideOffersSortedAbitualiAndPerDay(percorso_passeggero):
+    import route
     import params
     import date_time_util as dtu
     from datetime import timedelta
 
     nowWithTolerance = dtu.removeTimezone(dtu.nowCET()) - timedelta(minutes=params.TIME_TOLERANCE_MIN)
 
-    qry_routes = Route.query(
-        Route.percorsi_passeggeri_compatibili == percorso_passeggero,
-    )
-    percorsi_compatibili = [r.getPercorso() for r in qry_routes.fetch()]
+    percorsi_compatibili = route.getPercorsiCompatibili(percorso_passeggero)
 
     if percorsi_compatibili:
         qry_rides = RideOffer.query(
@@ -241,7 +251,22 @@ def getActiveRideOffersSortedPerDay(percorso_passeggero):
         offers = qry_rides.fetch()
     else:
         offers = []
-    return filterAndSortOffersPerDay(offers)
+    return filterAndSortOffersAbitualiAndPerDay(offers) #abituali, perDay
+
+# also expired ones
+def getUsernamesWithCompatibleRideOffers(percorso_passeggero):
+    import route
+    percorsi_compatibili = route.getPercorsiCompatibili(percorso_passeggero)
+    if percorsi_compatibili:
+        qry_rides = RideOffer.query(
+            RideOffer.percorso.IN(percorsi_compatibili),
+            projection=[RideOffer.driver_username], distinct=True
+        )
+        usernames = ['@{}'.format(r.driver_username) for r in qry_rides.fetch()]
+        return set(usernames)
+    else:
+        return []
+
 
 def getActiveRideOffers():
     import params

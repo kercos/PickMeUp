@@ -29,6 +29,12 @@ indexes:
   - name: programmato
   - name: start_datetime
 
+- kind: RideOffer
+  properties:
+  - name: percorso
+  - name: driver_username
+
+
 # This index.yaml is automatically updated whenever the dev_appserver
 # detects that a new type of query is run.  If you want to manage the
 # index.yaml file manually, remove the above marker line (the line

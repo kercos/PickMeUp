@@ -33,16 +33,22 @@ STATES = {
     0: 'Initial state',
     1: 'Cerca/Richiesta/Offerta passaggio/Aggiungi Passaggio',
     11:   'Offri Passaggio',
-    111:     'Passaggio a Breve (24 ore)',
-    112:     'Passaggio Programmato (ripetuto)',
-    13:   'Cerca Passaggio - Quando',
-    14:   'Cerca Passaggio - Risultati',
+    111:     'Offri Passaggio - scelta passaggio singolo (adesso, oggi, prox giorni)',
+    1111:     'Passaggio OGGI (ento le 24)',
+    1112:     'Prossimi giorni (in settimana)',
+    112:     'Passaggio Periodico (ripetuto ora e data)',
+    12:   'Cerca Passaggio - Abituali/Regolari',
+    121:     'Cerca Passaggio - Risultati Abituali',
+    122:      'Cerca Passaggio - Risultati Regolari - Quando?',
+    1221:        'Cerca Passaggio - Risultati Regolari - Risultati Giorno',
+    14:   'Manda richiesta',
     3: 'Impostazioni',
     31:   'Itinerari',
     311:     'Aggiungi Persorso Inverso',
     312:     'Rimuovi Persorso',
     32:   'Notifiche',
     33:   'Modifica Offerte',
+    7:    'Admin',
     8:    'SpeechTest',
     9: 'Info',
     91:   'Info Fermate',
@@ -81,10 +87,15 @@ BOTTONE_RIMUOVI_PERCORSO = "➖ RIMUOVI PERCORSO"
 BOTTONE_PERCORSI = "🛣 PERCORSI PREFERITI"
 BOTTONE_NOTIFICHE = "🔔 NOTIFICHE PASSAGGI"
 BOTTONE_ANNULLA = "❌ ANNULLA"
+BOTTONE_SINGOLO = "1️⃣ SINGOLO" # ADESSO, OGGI, PROX. GIORNI
 BOTTONE_ADESSO = "👇 ADESSO"
 BOTTONE_OGGI = "⏰ OGGI"
 BOTTONE_PROX_GIORNI = "📆 PROX. GIORNI"
 BOTTONE_PERIODICO = "🔄📆 PERIODICO"
+BOTTONE_ABITUALE = "🌀 ABITUALE"
+BOTTONE_PROGRAMMATI = "⏱ PROGRAMMATI"
+BOTTONE_ABITUALI = "🌀 ABITUALI"
+BOTTONE_INVIA_RICHIESTA = "📨 INVIA RICHIESTA"
 BOTTONE_CONFERMA = "👌 CONFERMA"
 BOTTONE_ELIMINA_OFFERTE = "🗑🚘 ELIMINA MIE OFFERTE"
 BOTTONE_ATTIVA_NOTIFICHE_TUTTE = "🔔🔔🔔 ATTIVA TUTTE"
@@ -94,7 +105,7 @@ BOTTONE_ELIMINA = "🗑 ELIMINA"
 BOTTONE_REGOLAMENTO_ISTRUZIONI = "📜 REGOLAMENTO e ISTRUZIONI"
 BOTTONE_STATS = "📊 STATISTICHE"
 BOTTONE_CONTATTACI = "📩 CONTATTACI"
-
+BOTTONE_ADMIN = "🔑 Admin"
 BOTTONE_LOCATION = {
     'text': "INVIA POSIZIONE",
     'request_location': True,
@@ -145,6 +156,18 @@ def send_photo_url(p, url, kb=None):
             msg = 'Opzioni disponibili:'
             kb_flat = utility.flatten(kb)[:11]  # no more than 11
             main_fb.sendMessageWithQuickReplies(p, msg, kb_flat)
+
+def sendDocument(p, file_id):
+    if p.isTelegramUser():
+        main_telegram.sendDocument(p.chat_id, file_id)
+    else:
+        pass
+
+def sendExcelDocument(p, sheet_tables, filename='file'):
+    if p.isTelegramUser():
+        main_telegram.sendExcelDocument(p.chat_id, sheet_tables, filename)
+    else:
+        pass
 
 def sendWaitingAction(p, action_type='typing', sleep_time=None):
     if p.isTelegramUser():
@@ -388,39 +411,46 @@ def dealWithUniversalCommands(p, input):
 def goToState0(p, **kwargs):
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     giveInstruction = input is None
-    kb = [
-        [BOTTENE_OFFRI_PASSAGGIO, BOTTENE_CERCA_PASSAGGIO],
-        [BOTTONE_IMPOSTAZIONI],
-        [BOTTONE_INFO]
-    ]
     if giveInstruction:
         msg = '🏠 *Inizio*\n\n' \
               '• Premi su {} o {} per offrire/cercare passaggi\n' \
               '• Premi su {} per percorsi e notifiche\n' \
-              '• Premi su {} per ottenere più info (mappa, contatti, ...)'.\
+              '• Premi su {} per avere altre informazioni'.\
             format(BOTTENE_OFFRI_PASSAGGIO, BOTTENE_CERCA_PASSAGGIO, BOTTONE_IMPOSTAZIONI, BOTTONE_INFO)
+        kb = [
+            [BOTTENE_OFFRI_PASSAGGIO, BOTTENE_CERCA_PASSAGGIO],
+            [BOTTONE_IMPOSTAZIONI],
+            [BOTTONE_INFO]
+        ]
+        if p.isAdmin():
+            kb[-1].append(BOTTONE_ADMIN)
         p.setLastKeyboard(kb)
         send_message(p, msg, kb)
     else:
-        if input == BOTTENE_OFFRI_PASSAGGIO:
-            if not p.isTelegramUser():
-                msg = '⚠️ La possibilità di offrire passaggi è consentita solo a utenti registrati su Telegram. ' \
-                      'Ti preghiamo di installare Telegram e aggiungere il bot ' \
-                      '@PickMeUpBot (http://t.me/pickmeup_bot).\n\n'
-                send_message(p, msg, kb)
-            elif p.username is None or p.username == '-':
-                msg = '⚠️ *Non hai uno username pubblico* impostato su Telegram. ' \
-                      'Questo è necessario per far sì che i passeggeri ti possano contattare.\n\n' \
-                      'Ti preghiamo di *scegliere uno username nelle impostazioni di Telegram* e riprovare.'
-                send_message(p, msg, kb)
+        kb = p.getLastKeyboard()
+        if input in utility.flatten(kb):
+            if input == BOTTENE_OFFRI_PASSAGGIO:
+                if not p.isTelegramUser():
+                    msg = '⚠️ La possibilità di offrire passaggi è consentita solo a utenti registrati su Telegram. ' \
+                          'Ti preghiamo di installare Telegram e aggiungere il bot ' \
+                          '@PickMeUpBot (http://t.me/pickmeup_bot).\n\n'
+                    send_message(p, msg, kb)
+                elif p.username is None or p.username == '-':
+                    msg = '⚠️ *Non hai uno username pubblico* impostato su Telegram. ' \
+                          'Questo è necessario per far sì che i passeggeri ti possano contattare.\n\n' \
+                          'Ti preghiamo di *scegliere uno username nelle impostazioni di Telegram* e riprovare.'
+                    send_message(p, msg, kb)
+                else:
+                    redirectToState(p, 1, firstCall=True, passaggio_type='offerta')
+            elif input == BOTTENE_CERCA_PASSAGGIO:
+                redirectToState(p, 1, firstCall=True, passaggio_type='cerca')
+            elif input == BOTTONE_IMPOSTAZIONI:
+                redirectToState(p, 3)
+            elif input == BOTTONE_INFO:
+                redirectToState(p, 9)
             else:
-                redirectToState(p, 1, firstCall=True, passaggio_type='offerta')
-        elif input == BOTTENE_CERCA_PASSAGGIO:
-            redirectToState(p, 1, firstCall=True, passaggio_type='cerca')
-        elif input == BOTTONE_IMPOSTAZIONI:
-            redirectToState(p, 3)
-        elif input == BOTTONE_INFO:
-            redirectToState(p, 9)
+                assert input == BOTTONE_ADMIN
+                redirectToState(p, 7)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
@@ -444,6 +474,7 @@ def goToState1(p, **kwargs):
     if giveInstruction:
         if stage == 0:
             msg = '📍 *Da dove parti?*\n' \
+                  '   ∙ 🖊 scrivi il nome di una località, oppure\n' \
                   '   ∙ 🎛 usa i pulsanti sotto, oppure\n' \
                   '   ∙ 🗺📌 inviami una posizione GPS'
             if passaggio_type in ['offerta','cerca']:
@@ -453,8 +484,8 @@ def goToState1(p, **kwargs):
                         params.getCommand(params.PERCORSO_COMMAND_PREFIX, n), i)
                         for n, i in enumerate(percorsi, 1)]
                     percorsiCmds = '\n\n'.join(commands)
-                    msg += ' oppure\n' \
-                           '   ∙ seleziona uno dei *tuoi percorsi*:\n\n{}\n\n'.format(percorsiCmds)
+                    msg += ', oppure\n\n' \
+                           '   ∙ seleziona uno dei *tuoi percorsi*:\n{}\n\n'.format(percorsiCmds)
             kb = utility.makeListOfList(routing_util.SORTED_ZONE_WITH_STOP_IF_SINGLE)
         elif stage == 1:
             logging.debug('Sorting fermate in {}'.format(PASSAGGIO_PATH[0]))
@@ -467,11 +498,13 @@ def goToState1(p, **kwargs):
             msg = '📍🚏 *Da quale fermata parti?*'
         elif stage == 2:
             msg = '🚩 *Dove vai?*\n' \
+                  '   ∙ 🖊 scrivi il nome di una località, oppure\n' \
                   '   ∙ 🎛 usa i pulsanti sotto, oppure\n' \
                   '   ∙ 🗺📌 inviami una posizione GPS'
             destinazioni = routing_util.SORTED_ZONE_WITH_STOP_IF_SINGLE
             fermata_start = routing_util.encodeFermataKey(PASSAGGIO_PATH[0], PASSAGGIO_PATH[1])
             if fermata_start in destinazioni:
+                destinazioni = list(destinazioni) # make copy to prevent from modifing list in routing_util
                 destinazioni.remove(fermata_start)
             #destinazioni = [
             #    l for l in route.SORTED_ZONE_WITH_STOP_IF_SINGLE \
@@ -601,13 +634,48 @@ def goToState11(p, **kwargs):
         percorso_key = routing_util.encodePercorsoFromQuartet(*PASSAGGIO_PATH)
         msg = "🛣 *Il tuo percorso*:\n{}\n\n".format(percorso_key)
         msg += "📆⌚ *Quando parti?*\n\n" \
-               "Premi *{}* se parti ora, " \
-               "*{}* se parti oggi, " \
-               "*{}* nei prossimi giorni o " \
-               "*{}* se vuoi programmare un viaggio regolare " \
-               "(ad esempio ogni lunedì alle 8:00).".format(BOTTONE_ADESSO, BOTTONE_OGGI,
-                                                            BOTTONE_PROX_GIORNI, BOTTONE_PERIODICO)
-        kb = [[BOTTONE_ANNULLA], [BOTTONE_ADESSO, BOTTONE_OGGI], [BOTTONE_PROX_GIORNI, BOTTONE_PERIODICO]]
+               "Premi su:\n" \
+               "∙ *{}* se vuoi inserire un viaggio singolo (oggi o nei prossimi giorni)\n" \
+               "∙ *{}* ad esempio ogni lunedì alle 8:00\n" \
+               "∙ *{}* per un viaggio frequente ma senza giorni e ore specifici.".format(
+            BOTTONE_SINGOLO, BOTTONE_PERIODICO, BOTTONE_ABITUALE)
+        kb = [[BOTTONE_ANNULLA], [BOTTONE_SINGOLO, BOTTONE_PERIODICO], [BOTTONE_ABITUALE]]
+        p.setLastKeyboard(kb)
+        send_message(p, msg, kb)
+    else:
+        kb = p.getLastKeyboard()
+        if input in utility.flatten(kb):
+            if input == BOTTONE_ANNULLA:
+                restart(p)
+                return
+            if input == BOTTONE_SINGOLO:
+                redirectToState(p, 111)
+                return
+            PASSAGGIO_INFO['mode'] = input
+            if input == BOTTONE_PERIODICO:
+                redirectToState(p, 112)
+            else:
+                assert input == BOTTONE_ABITUALE
+                sendWaitingAction(p)
+                finalizeOffer(p, PASSAGGIO_PATH, date_time=None, time_mode=input, programmato=True)
+                restart(p)
+
+        else:
+            tellInputNonValidoUsareBottoni(p, kb)
+
+# ================================
+# GO TO STATE 111: Offri Passaggio - scelta passaggio singolo (adesso, oggi, prox giorni)
+# ================================
+def goToState111(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    PASSAGGIO_INFO = p.getTmpPassaggioInfo()
+    PASSAGGIO_PATH = PASSAGGIO_INFO['path']
+    if giveInstruction:
+        percorso_key = routing_util.encodePercorsoFromQuartet(*PASSAGGIO_PATH)
+        msg = "🛣 *Il tuo percorso*:\n{}\n\n".format(percorso_key)
+        msg += "📆⌚ *Parti adesso, oggi o nei prossimi giorni?*"
+        kb = [[BOTTONE_ANNULLA], [BOTTONE_ADESSO, BOTTONE_OGGI], [BOTTONE_PROX_GIORNI]]
         p.setLastKeyboard(kb)
         send_message(p, msg, kb)
     else:
@@ -623,20 +691,18 @@ def goToState11(p, **kwargs):
                 finalizeOffer(p, PASSAGGIO_PATH, dt, time_mode=input)
                 restart(p)
             elif input == BOTTONE_OGGI:
-                redirectToState(p, 111)
-            elif input == BOTTONE_PROX_GIORNI:
-                redirectToState(p, 112)
+                redirectToState(p, 1111)
             else:
-                assert input == BOTTONE_PERIODICO
-                redirectToState(p, 113)
+                assert input == BOTTONE_PROX_GIORNI
+                redirectToState(p, 1112)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
 # ================================
-# GO TO STATE 111: Offri passaggio OGGI
+# GO TO STATE 1111: Offri passaggio OGGI
 # ================================
 
-def goToState111(p, **kwargs):
+def goToState1111(p, **kwargs):
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     PASSAGGIO_INFO = p.getTmpPassaggioInfo()
     PASSAGGIO_TIME = PASSAGGIO_INFO['time']
@@ -691,10 +757,10 @@ def goToState111(p, **kwargs):
             tellInputNonValidoUsareBottoni(p, kb)
 
 # ================================
-# GO TO STATE 112: Offri passaggio nei prossimi giorni
+# GO TO STATE 1112: Offri passaggio nei prossimi giorni
 # ================================
 
-def goToState112(p, **kwargs):
+def goToState1112(p, **kwargs):
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     PASSAGGIO_INFO = p.getTmpPassaggioInfo()
     TIME_HH_MM = PASSAGGIO_INFO['time']
@@ -755,10 +821,10 @@ def goToState112(p, **kwargs):
 
 
 # ================================
-# GO TO STATE 113: Offri passaggio periodico
+# GO TO STATE 112: Offri passaggio periodico
 # ================================
 
-def goToState113(p, **kwargs):
+def goToState112(p, **kwargs):
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     PASSAGGIO_INFO = p.getTmpPassaggioInfo()
     DAYS = PASSAGGIO_INFO['days']
@@ -829,7 +895,8 @@ def goToState113(p, **kwargs):
 # FOR OFFERS
 def finalizeOffer(p, path, date_time, time_mode, programmato=False, giorni=()):
     from main_exception import deferredSafeHandleException
-    date_time = dtu.removeTimezone(date_time)
+    if date_time:
+        date_time = dtu.removeTimezone(date_time)
     percorso = routing_util.encodePercorsoFromQuartet(*path)
     o = ride_offer.addRideOffer(p, date_time, percorso, time_mode, programmato, giorni)
     r = route.getRouteAddIfNotPresent(percorso)
@@ -855,39 +922,155 @@ def broadCastOffer(p, o, r):
 
 
 # FOR SEARCHES
-def showMatchedPercorsi(p, PASSAGGIO_INFO):
+def showMatchedPercorsi(p, PASSAGGIO_INFO=None):
     import pickle
+    if PASSAGGIO_INFO is None:
+        PASSAGGIO_INFO = p.getTmpPassaggioInfo()
     PASSAGGIO_PATH = PASSAGGIO_INFO['path']
     percorso = routing_util.encodePercorsoFromQuartet(*PASSAGGIO_PATH)
     sendWaitingAction(p)
-    offers_per_day = ride_offer.getActiveRideOffersSortedPerDay(percorso)
+    offers_abituali, offers_per_day = ride_offer.getActiveRideOffersSortedAbitualiAndPerDay(percorso)
+    logging.debug('Offers abituali: {}'.format(offers_abituali))
     logging.debug('Offers per day: {}'.format(offers_per_day))
     PASSAGGIO_INFO['search_results_per_day_pkl_dumps'] = pickle.dumps(offers_per_day)
-    percorsi_num = sum([len(l) for l in offers_per_day])
+    PASSAGGIO_INFO['search_results_abituali_pkl_dumps'] = pickle.dumps(offers_abituali)
+    offers_abituali_count = len(offers_abituali)
+    offers_per_day_count = sum([len(l) for l in offers_per_day])
     msg = "🛣 *Il tuo percorso*:\n{}\n\n".format(percorso)
-    if percorsi_num == 1:
-        # if only one skip choosing day
+    if offers_abituali_count>0 and offers_per_day_count == 0:
+        PASSAGGIO_INFO['found_abituali'] = True
+        # show only passaggi abituali
+        msg += "🚘 *{} passaggi abituali trovati*".format(offers_abituali_count)
+        send_message(p, msg)
+        redirectToState(p, 12)
+        #redirectToState(p, 121, firstCall=True)
+    elif offers_abituali_count==0 and offers_per_day_count == 1:
+        # if only one passaggi programmati skip choosing day
+        PASSAGGIO_INFO['found_programmati'] = True
         chosen_day_index = [i for i,x in enumerate(offers_per_day) if len(x)==1][0]
         PASSAGGIO_INFO['search_chosen_day'] = chosen_day_index
-        msg += "🚘 *{} passaggio trovato nei prossimi 7 giorni*".format(percorsi_num)
+        msg += "🚘 *1 passaggio programmato trovato nei prossimi 7 giorni*"
         send_message(p, msg)
         sendWaitingAction(p, sleep_time=1)
-        redirectToState(p, 14, firstCall=True)
-    elif percorsi_num > 0:
-        msg += "🚘 *{} passaggi trovati nei prossimi 7 giorni*".format(percorsi_num)
+        redirectToState(p, 12)
+        #redirectToState(p, 1221, firstCall=True) # Risultati Regolari - Risultati Giorno
+    elif offers_abituali_count==0 and offers_per_day_count > 0:
+        # show only passaggi programmati
+        PASSAGGIO_INFO['found_programmati'] = True
+        msg += "🚘 *{} passaggi programmati trovati nei prossimi 7 giorni*".format(offers_per_day_count)
         send_message(p, msg)
-        redirectToState(p, 13)
+        redirectToState(p, 12)
+        #redirectToState(p, 122)
+    elif offers_abituali_count>0 and offers_per_day_count > 0:
+        PASSAGGIO_INFO['found_abituali'] = True
+        PASSAGGIO_INFO['found_programmati'] = True
+        total = offers_abituali_count + offers_per_day_count
+        msg += "🚘 *{} passaggi trovati*".format(total)
+        send_message(p, msg)
+        redirectToState(p, 12)
     else:
         msg += "🙊 *Nessun passaggio trovato*"
         send_message(p, msg)
-        sendWaitingAction(p, sleep_time=1)
-        restart(p)
+        redirectToState(p, 14)
 
 # ================================
-# GO TO STATE 13: Cerca Passaggio - Quando
+# GO TO STATE 12: Cerca Passaggio - Abituale / Programmato
 # ================================
 
-def goToState13(p, **kwargs):
+def goToState12(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        PASSAGGIO_INFO = p.getTmpPassaggioInfo()
+        found_abituali = PASSAGGIO_INFO['found_abituali']
+        found_programmati = PASSAGGIO_INFO['found_programmati']
+        kb = [[BOTTONE_ANNULLA]]
+        if found_abituali and found_programmati:
+            msg = '*Puoi visualizzare i passaggi ABITUALI o quelli PROGRAMMATI*.'
+            kb.append([BOTTONE_ABITUALI, BOTTONE_PROGRAMMATI])
+        elif  found_abituali:
+            msg = '*Puoi visualizzare i passaggi ABITUALI*'
+            kb.append([BOTTONE_ABITUALI])
+        else:
+            msg = '*Vuoi visualizzare i passaggi PROGRAMMATI*'
+            kb.append([BOTTONE_PROGRAMMATI])
+        msg += '\n\nIn alternativa puoi premere su {} per contattare tutte le persone' \
+               'che hanno offerto un passaggio compatibile ' \
+               'con questa tratta in passato.'.format(BOTTONE_INVIA_RICHIESTA)
+        kb.append([BOTTONE_INVIA_RICHIESTA])
+        p.setLastKeyboard(kb)
+        send_message(p, msg, kb)
+    else:
+        if input == BOTTONE_ANNULLA:
+            restart(p)
+            return
+        kb = p.getLastKeyboard()
+        flat_kb = utility.flatten(kb)
+        if input in flat_kb:
+            p.setLastState(p.state)
+            if input==BOTTONE_ABITUALI:
+                redirectToState(p, 121, firstCall=True)
+            elif input==BOTTONE_INVIA_RICHIESTA:
+                redirectToState(p, 141)
+            else:
+                assert input==BOTTONE_PROGRAMMATI
+                redirectToState(p, 122)
+        else:
+            tellInputNonValidoUsareBottoni(p, kb)
+
+# ================================
+# GO TO STATE 121: Cerca Passaggio - Risultati Abituali
+# ================================
+
+def goToState121(p, **kwargs):
+    import pickle
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        PASSAGGIO_INFO = p.getTmpPassaggioInfo()
+        offers_abituali = pickle.loads(PASSAGGIO_INFO['search_results_abituali_pkl_dumps'])
+        firstCall = kwargs['firstCall'] if 'firstCall' in kwargs.keys() else False
+        if firstCall:
+            cursor = [0, len(offers_abituali)]
+            p.setTmpVariable(person.VAR_CURSOR, cursor)
+        else:
+            cursor = p.getTmpVariable(person.VAR_CURSOR)
+        logging.debug('cursor: {}'.format(cursor))
+        offer = offers_abituali[cursor[0]]
+        msg = "🚘 Passaggio {}/{}\n\n{}".format(cursor[0] + 1, cursor[1], offer.getDescription())
+        # single_offer = len(offers_chosen_day) == 1
+        kb = [[BOTTONE_INIZIO]]
+        if len(offers_abituali) > 1:
+            kb.append([PREV_ICON, NEXT_ICON])
+        #if p.getLastState():
+        kb.append([BOTTONE_INDIETRO])
+        p.setLastKeyboard(kb)
+        send_message(p, msg, kb)
+    else:
+        kb = p.getLastKeyboard()
+        if input in utility.flatten(kb):
+            if input == BOTTONE_INIZIO:
+                restart(p)
+                return
+            elif input == BOTTONE_INDIETRO:
+                redirectToState(p, 12)
+                #redirectToState(p, p.getLastState())
+                #showMatchedPercorsi(p)
+            elif input == PREV_ICON:
+                p.decreaseCursor()
+                repeatState(p, put=True)
+            else:  # input==NEXT_ICON:
+                p.increaseCursor()
+                repeatState(p, put=True)
+        else:
+            tellInputNonValidoUsareBottoni(p, kb)
+
+
+# ================================
+# GO TO STATE 122: Cerca Passaggio - Risultati Programmati - Quando?
+# ================================
+
+def goToState122(p, **kwargs):
     import pickle
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     PASSAGGIO_INFO = p.getTmpPassaggioInfo()
@@ -901,7 +1084,10 @@ def goToState13(p, **kwargs):
         offer_days_count = [len(x) for x in offers_per_day]
         offer_days_count_oggi_domani = offer_days_count[today:] + offer_days_count[:today]
         offer_giorni_sett_count_oggi_domani = ['{} ({})'.format(d, c) for d,c in zip(giorni_sett_oggi_domani, offer_days_count_oggi_domani)]
-        kb = [[BOTTONE_ANNULLA], offer_giorni_sett_count_oggi_domani[:2], offer_giorni_sett_count_oggi_domani[2:]]
+        kb = [
+            [BOTTONE_INDIETRO, BOTTONE_ANNULLA],
+            offer_giorni_sett_count_oggi_domani[:2], offer_giorni_sett_count_oggi_domani[2:]
+        ]
         p.setLastKeyboard(kb)
         send_message(p, msg, kb)
     else:
@@ -911,6 +1097,10 @@ def goToState13(p, **kwargs):
         kb = p.getLastKeyboard()
         flat_kb = utility.flatten(kb)
         if input in flat_kb:
+            if input==BOTTONE_INDIETRO:
+                redirectToState(p, 12)
+                return
+            p.setLastState(p.state)
             count = int(input[input.index('(')+1:input.index(')')])
             giorno = input[:input.index(' ')]
             giorno_full = giorno if len(giorno)>2 else params.GIORNI_SETTIMANA_FULL[params.GIORNI_SETTIMANA.index(giorno)]
@@ -922,15 +1112,15 @@ def goToState13(p, **kwargs):
                 chosen_day_index = (flat_kb.index(input) - 1 + today) % 7  # -1 because of BOTTONE_ANNULLA
                 PASSAGGIO_INFO['search_chosen_day'] = chosen_day_index
                 sendWaitingAction(p, sleep_time=1)
-                redirectToState(p, 14, firstCall=True)
+                redirectToState(p, 1221, firstCall=True)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
 # ================================
-# GO TO STATE 14: Cerca Passaggio - Risultati
+# GO TO STATE 1221: Cerca Passaggio - Risultati Regolari - Risultati Giorno
 # ================================
 
-def goToState14(p, **kwargs):
+def goToState1221(p, **kwargs):
     import pickle
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     giveInstruction = input is None
@@ -953,7 +1143,8 @@ def goToState14(p, **kwargs):
         kb = [[BOTTONE_INIZIO]]
         if len(offers_chosen_day)>1:
             kb.append([PREV_ICON, NEXT_ICON])
-        kb.append([BOTTONE_INDIETRO])
+        if p.getLastState():
+            kb.append([BOTTONE_INDIETRO])
         p.setLastKeyboard(kb)
         send_message(p, msg, kb)
     else:
@@ -963,7 +1154,8 @@ def goToState14(p, **kwargs):
                 restart(p)
                 return
             elif input==BOTTONE_INDIETRO:
-                redirectToState(p, 13)
+                redirectToState(p, p.getLastState())
+                #showMatchedPercorsi(p)
             elif input==PREV_ICON:
                 p.decreaseCursor()
                 repeatState(p, put=True)
@@ -973,6 +1165,61 @@ def goToState14(p, **kwargs):
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
+# ================================
+# GO TO STATE 14: Manda Richiesta - Conferma
+# ================================
+
+def goToState14(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        msg = '*Vuoi inviare una richiesta di passaggio agli utenti ' \
+              'che hanno offerto un passaggio compatibile con questa tratta in passato?*'
+        kb = [[BOTTONE_ANNULLA], [BOTTONE_INVIA_RICHIESTA]]
+        p.setLastKeyboard(kb)
+        send_message(p, msg, kb)
+    else:
+        if input == BOTTONE_ANNULLA:
+            restart(p)
+            return
+        kb = p.getLastKeyboard()
+        flat_kb = utility.flatten(kb)
+        if input in flat_kb:
+            assert input == BOTTONE_INVIA_RICHIESTA
+            redirectToState(p, 141)
+        else:
+            tellInputNonValidoUsareBottoni(p, kb)
+
+# ================================
+# GO TO STATE 141: Manda Richiesta - Conferma
+# ================================
+
+def goToState141(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        PASSAGGIO_INFO = p.getTmpPassaggioInfo()
+        PASSAGGIO_PATH = PASSAGGIO_INFO['path']
+        percorso = routing_util.encodePercorsoFromQuartet(*PASSAGGIO_PATH)
+        utenti_list = ride_offer.getUsernamesWithCompatibleRideOffers(percorso)
+        if utenti_list:
+            utenti_list_str = ', '.join(utenti_list)
+            msg = '*Puoi contattare uno dei seguenti utenti che hanno offerto ' \
+                  'un passaggio compatibile con questa tratta in passato:*\n{}'.format(utenti_list_str)
+        else:
+            msg = '*Mi dispiace, non sono stati trovati utenti che hanno offerto ' \
+                  'in passato un passaggio compatibile con questa tratta.*'
+        kb = [[BOTTONE_INIZIO]]
+        p.setLastKeyboard(kb)
+        send_message(p, msg, kb)
+    else:
+        kb = p.getLastKeyboard()
+        flat_kb = utility.flatten(kb)
+        if input in flat_kb:
+            assert input == BOTTONE_INIZIO
+            restart(p)
+        else:
+            tellInputNonValidoUsareBottoni(p, kb)
 
 # ================================
 # GO TO STATE 3: Impostazioni
@@ -1221,6 +1468,42 @@ def goToState33(p, **kwargs):
                 repeatState(p, put=True)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
+
+# ================================
+# GO TO STATE 7: Admin State
+# ================================
+
+def goToState7(p, **kwargs):
+    input = kwargs['input'] if 'input' in kwargs.keys() else None
+    giveInstruction = input is None
+    if giveInstruction:
+        msg = utility.escapeMarkdown(utility.unindent(
+            """
+            Usa i comandi qua sotto:
+            ∙ /anagrafica
+            ∙ /offerte_passaggi
+            """
+        ))
+        kb = [[BOTTONE_INIZIO]]
+        p.setLastKeyboard(kb)
+        send_message(p, msg, kb)
+    else:
+        kb = p.getLastKeyboard()
+        if input == BOTTONE_INIZIO:
+            restart(p)
+        elif input.startswith('/'):
+            sendWaitingAction(p)
+            import stats
+            table = stats.getStats(input)
+            if table:
+                fileName = input[1:]
+                sheet_table = {fileName: table}
+                sendExcelDocument(p, sheet_table, fileName)
+            else:
+                tellInputNonValidoUsareBottoni(p, kb)
+        else:
+            tellInputNonValidoUsareBottoni(p, kb)
+
 
 # ================================
 # GO TO STATE 8: SpeechTest

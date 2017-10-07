@@ -12,6 +12,7 @@ import params
 # TMP_VARIABLES NAMES
 # ------------------------
 VAR_LAST_KEYBOARD = 'last_keyboard'
+VAR_LAST_STATE = 'last_state'
 VAR_PASSAGGIO_INFO = 'passaggio_info' # see intializePassaggioInfo
 VAR_MY_RIDES = 'my_rides'
 VAR_CURSOR = 'cursor' # [position (1-based), total]
@@ -132,6 +133,12 @@ class Person(geomodel.GeoModel, ndb.Model): #ndb.Expando
     def getLastKeyboard(self):
         return self.getTmpVariable(VAR_LAST_KEYBOARD)
 
+    def setLastState(self, state, put=False):
+        self.setTmpVariable(VAR_LAST_STATE, value=state, put=put)
+
+    def getLastState(self):
+        return self.getTmpVariable(VAR_LAST_STATE)
+
     def initTmpPassaggioInfo(self, passaggio_type):
         passaggio_info = {
             'type': passaggio_type,  # cerca, richiesta, offerta, aggiungi_preferiti
@@ -141,7 +148,10 @@ class Person(geomodel.GeoModel, ndb.Model): #ndb.Expando
             'days': [],  # [1,2]
             'stage': 0, # used for passaggi periodici
             'search_chosen_day': None, # only for cerca
-            'search_results_per_day_pkl_dumps': [] # only for cerca
+            'search_results_per_day_pkl_dumps': [], # only for cerca
+            'search_results_abituali_pkl_dumps': [],  # only for cerca
+            'found_abituali': False,
+            'found_programmati': False,
         }
         self.setTmpVariable(VAR_PASSAGGIO_INFO, passaggio_info)
         return passaggio_info
@@ -218,8 +228,10 @@ class Person(geomodel.GeoModel, ndb.Model): #ndb.Expando
         o.disactivate()
         pkl_offers = pickle.dumps(offers)
         self.setTmpVariable(VAR_MY_RIDES, pkl_offers)
-        cursor[0] -= 1
+        if cursor[0] != 0: # if not first
+            cursor[0] -= 1
         cursor[1] -= 1
+
 
     def loadMyRideOffers(self):
         import pickle

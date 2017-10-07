@@ -111,6 +111,13 @@ def getRouteAddIfNotPresent(percorso):
         #r.put() always after populatePercorsoWithDetails
     return r
 
+def getPercorsiCompatibili(percorso_passeggero):
+    qry_routes = Route.query(
+        Route.percorsi_passeggeri_compatibili == percorso_passeggero
+    )
+    percorsi_compatibili = [r.getPercorso() for r in qry_routes.fetch()]
+    return percorsi_compatibili
+
 def populateRoutesWithDetails():
     more, cursor = True, None
     while more:

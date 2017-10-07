@@ -36,6 +36,11 @@ def datetimeStringCET(dt=None, seconds=False, format = None):
         format = '%d-%m-%Y %H:%M:%S' if seconds else '%d-%m-%Y %H:%M'
     return dt_cet.strftime(format)
 
+def formatDateTime(dt, format='%d-%m-%Y %H:%M'):
+    if dt:
+        return dt.strftime(format)
+    return None
+
 def formatDate(dt=None, format ='%d-%m-%Y'):
     if dt == None:
         dt = nowCET()
