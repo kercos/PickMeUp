@@ -116,7 +116,7 @@ BOTTONE_LOCATION = {
 # ================================
 
 def send_message(p, msg, kb=None, markdown=True, inline_keyboard=False, one_time_keyboard=False,
-         sleepDelay=False, hide_keyboard=False, force_reply=False, disable_web_page_preview=True):
+         sleepDelay=False, hide_keyboard=False, force_reply=False, disable_web_page_preview=False):
     if p.isTelegramUser():
         return main_telegram.send_message(p, msg, kb, markdown, inline_keyboard, one_time_keyboard,
                            sleepDelay, hide_keyboard, force_reply, disable_web_page_preview)
