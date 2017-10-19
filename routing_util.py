@@ -20,16 +20,25 @@ import parseKml
 # FERMATE {zona_stop: {'zona': refZona, 'stop': <fermata_name>, 'loc': (<lat>,<lon>)}}
 
 ZONE, FERMATE = parseKml.parseMap()
-STOPS = list(set(v['stop'] for v in FERMATE.values()))
+STOPS = [v['stop'] for v in FERMATE.values()]
 #GPS_FERMATE_LOC = [v['loc'] for v in FERMATE.values()]
 
-SORTED_ZONE = sorted(ZONE.keys())
+#SORTED_ZONE_ITEMS = sorted(ZONE.items(), key=lambda i: i) #alphabetically
+SORTED_ZONE_ITEMS = sorted(ZONE.items(), key=lambda i: int(i[1]['order'])) #manual order
+
 SORTED_STOPS_IN_ZONA = lambda z: sorted([x for x in ZONE[z]['stops']])
-SORTED_ZONE_WITH_STOP_IF_SINGLE = sorted(
-    [l if len(v['stops'])>1 else '{} ({})'.format(l, v['stops'][0]) for l,v in ZONE.iteritems() ]
-)
+
+SORTED_ZONE_WITH_STOP_IF_SINGLE = [
+    z if len(v['stops']) > 1 else '{} ({})'.format(z, v['stops'][0])
+    for z, v in SORTED_ZONE_ITEMS
+]
 
 PERCORSO_SEPARATOR = ' → '
+
+def getFermataKeyFromStop(stop):
+    fermata = [k for k,v in FERMATE.items() if v['stop']==stop]
+    assert len(fermata)==1
+    return fermata[0]
 
 def encodeFermataKey(zona, stop):
     return '{} ({})'.format(zona, stop)
@@ -50,6 +59,13 @@ def encodePercorsoFromQuartet(start_zona, start_fermata, end_zona, end_fermata):
     start_fermata_key, end_fermata_key = encodeFermateKeysFromQuartet(
         start_zona, start_fermata, end_zona, end_fermata)
     return encodePercorso(start_fermata_key, end_fermata_key)
+
+def encodePercorsoShortFromQuartet(start_zona, start_fermata, end_zona, end_fermata):
+    return '{}{}{}'.format(start_fermata, PERCORSO_SEPARATOR, end_fermata)
+
+def encodePercorsoShortFromPercorsoKey(percorso_key):
+    start_zona, start_stop, end_zone, end_stop = decodePercorsoToQuartet(percorso_key)
+    return encodePercorsoShortFromQuartet(start_zona, start_stop, end_zone, end_stop)
 
 def decodePercorsoToQuartet(percorso_key):
     start_fermata_key, end_fermata_key = decodePercorso(percorso_key)

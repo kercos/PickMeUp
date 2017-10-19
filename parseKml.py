@@ -10,6 +10,7 @@ tagPrefix = '{http://www.opengis.net/kml/2.2}'
 docTag = tagPrefix + 'Document'
 folderTag = tagPrefix + 'Folder'
 nameTag = tagPrefix + 'name'
+descriptionTag = tagPrefix + 'description'
 placemarkTag = tagPrefix + 'Placemark'
 pointTag = tagPrefix + 'Point'
 coordinatesTag = tagPrefix + 'coordinates'
@@ -55,8 +56,9 @@ def parseMap():
     zone_folder = nameFolders[ZONE_LAYER_NAME]
     placemarks = zone_folder.findall(placemarkTag)
     for p in placemarks:
-        name = p.find(nameTag).text.strip() # zona name
-        name = name.encode('utf-8')
+        name = p.find(nameTag).text.strip().encode('utf-8') # zona name
+        descriptionField = p.find(descriptionTag)
+        order = descriptionField.text.strip().encode('utf-8') if descriptionField is not None else '0'  # zona name
         polygon = p.find(polygonTag)
         outerBoundaryIs = polygon.find(outerBoundaryIsTag)
         linearRing = outerBoundaryIs.find(linearRingTag)
@@ -67,6 +69,7 @@ def parseMap():
             coordinateList.append((lat, lon))
         centroid_lat, centroid_lon = getPolygonCentroid(coordinateList)
         zone[name] = {
+            'order': order,
             'loc': (centroid_lat, centroid_lon), # centroid
             'polygon': coordinateList,
             'stops': []
@@ -94,11 +97,14 @@ def parseMap():
 
 def checkMap():
     zone, fermate = parseMap()
+    stops = [v['stop'] for f, v in fermate.items()]
     checkZone = all(len(v['stops'])>0 for v in zone.values())
     checkFermate = all(fv['zona'] is not None for fv in fermate.values())
+    checkStops = len(stops) == len(set(stops))
     print "Zone: {} check: {}".format(len(zone), checkZone)
     if not checkZone:
         print "Error zones: {}".format([z for z in zone.keys() if len(zone[z]['stops'])==0])
     print "Fermate: {} check: {}".format(len(fermate), checkFermate)
     if not checkFermate:
         print "Error fermate: {}".format([f for f in fermate.keys() if fermate[f]['zona'] is None])
+    print "Stops: {} check: {}".format(len(stops), checkStops)

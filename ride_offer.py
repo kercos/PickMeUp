@@ -209,7 +209,6 @@ def getActiveRideOffersProgrammatoQry():
     )
 '''
 
-
 def getActiveRideOffersDriver(driver_id):
     import params
     import date_time_util as dtu
@@ -253,19 +252,22 @@ def getActiveRideOffersSortedAbitualiAndPerDay(percorso_passeggero):
         offers = []
     return filterAndSortOffersAbitualiAndPerDay(offers) #abituali, perDay
 
+
 # also expired ones
-def getUsernamesWithCompatibleRideOffers(percorso_passeggero):
+def getDriversIdQryWithCompatibleRideOffers(percorso_passeggero):
     import route
     percorsi_compatibili = route.getPercorsiCompatibili(percorso_passeggero)
     if percorsi_compatibili:
         qry_rides = RideOffer.query(
             RideOffer.percorso.IN(percorsi_compatibili),
-            projection=[RideOffer.driver_username], distinct=True
+            #projection=[RideOffer.driver_username], distinct=True
+            projection=[RideOffer.driver_id], #distinct=True
         )
-        usernames = ['@{}'.format(r.driver_username) for r in qry_rides.fetch()]
-        return set(usernames)
-    else:
-        return []
+        return qry_rides
+        #usernames = ['@{}'.format(r.driver_username) for r in qry_rides.fetch()]
+        #return set(usernames)
+    #else:
+    #    return []
 
 
 def getActiveRideOffers():

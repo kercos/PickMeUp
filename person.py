@@ -182,6 +182,11 @@ class Person(geomodel.GeoModel, ndb.Model): #ndb.Expando
     def getPercorsi(self):
         return tuple([convertToUtfIfNeeded(prc) for prc in self.percorsi])
 
+    def getPercorsiShort(self):
+        import routing_util
+        percorsi = self.getPercorsi()
+        return [routing_util.encodePercorsoShortFromPercorsoKey(p) for p in percorsi]
+
     def getPercorsiSize(self):
         return self.percorsi_size
 

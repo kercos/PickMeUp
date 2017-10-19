@@ -29,10 +29,16 @@ indexes:
   - name: programmato
   - name: start_datetime
 
+# can be removed
 - kind: RideOffer
   properties:
   - name: percorso
   - name: driver_username
+
+- kind: RideOffer
+  properties:
+  - name: percorso
+  - name: driver_id
 
 
 # This index.yaml is automatically updated whenever the dev_appserver

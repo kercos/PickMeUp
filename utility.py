@@ -194,7 +194,8 @@ def matchInputToChoices(input, choices):
         results = process.extract(input, choices, limit=2)
     except:
         return None, False
-    if results and results[0][1]>threshold and (len(results)==1 or results[0][1]>results[1][1]):
+    if results and results[0][1]>threshold:
+        # and (len(results)==1 or results[0][1]>results[1][1]): # no more than one
         return results[0][0], perfectMatch
     return None, perfectMatch
 

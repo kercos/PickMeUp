@@ -56,7 +56,7 @@ def updateFermate():
         new_entries.append(f_entry)
     create_futures = ndb.put_multi_async(new_entries)
     ndb.Future.wait_all(create_futures)
-    print 'Added {} new fermate'.format(len(create_futures))
+    print 'Added or updated {} new fermate'.format(len(create_futures))
 
 '''
 After fermate have been updated (change in name or deletion)
@@ -65,7 +65,7 @@ def updatePercorsiInRideOffers(test = False):
     import route
     more, cursor = True, None
     while more:
-        # not clear if we have to restrict to active RideOffer only
+        # for all ride offers, including expired ones
         records, cursor, more = RideOffer.query().fetch_page(100, start_cursor=cursor)
         updating_records = []
         for r in records:
