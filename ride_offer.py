@@ -94,10 +94,10 @@ class RideOffer(ndb.Model): #ndb.Model
         import person
         msg = []
         percorso = self.getPercorso()
-        start_fermata, end_fermata = routing_util.decodePercorso(percorso)
+        start_stop, end_stop = routing_util.decodePercorsoShort(percorso)
 
-        msg.append('*Partenza*: {}'.format(start_fermata))
-        msg.append('*Arrivo*: {}'.format(end_fermata))
+        msg.append('*Partenza*: {}'.format(start_stop))
+        msg.append('*Arrivo*: {}'.format(end_stop))
 
         if self.programmato:
             msg.append('*Tipologia*: {}'.format(self.getTimeMode()))

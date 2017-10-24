@@ -40,6 +40,10 @@ def getFermataKeyFromStop(stop):
     assert len(fermata)==1
     return fermata[0]
 
+def getStopFromFeramtaKey(fermata_key):
+    assert fermata_key in FERMATE
+    return FERMATE[fermata_key]['stop']
+
 def encodeFermataKey(zona, stop):
     return '{} ({})'.format(zona, stop)
 
@@ -86,6 +90,11 @@ def decodePercorso(percorso_key):
     start_fermata_key, end_fermata_key = percorso_key.split(PERCORSO_SEPARATOR)
     return start_fermata_key, end_fermata_key
 
+def decodePercorsoShort(percorso_key):
+    start_zona, start_stop, end_zone, end_stop = decodePercorsoToQuartet(percorso_key)
+    return start_stop, end_stop
+
+
 def getReversePath(start, start_fermata, end, end_fermata):
     return end, end_fermata, start, start_fermata
 
@@ -103,6 +112,7 @@ def getFermateNearPosition(lat, lon, radius):
         if d < radius:
             if min_distance is None or d < min_distance:
                 min_distance = d
+            #k = v['stop']
             nearby_fermate_dict[f] = {
                 'loc': refPoint,
                 'dist': d
@@ -118,6 +128,7 @@ BASE_MAP_IMG_URL = "http://maps.googleapis.com/maps/api/staticmap?" + \
                    "&key=" + GOOGLE_API_KEY
 
 def getFermateNearPositionImgUrl(lat, lon, radius = 10):
+    import routing_util
     from utility import format_distance
     nearby_fermated_sorted_dict = getFermateNearPosition(lat, lon, radius)
     if nearby_fermated_sorted_dict:
@@ -128,7 +139,7 @@ def getFermateNearPositionImgUrl(lat, lon, radius = 10):
                            for num, (f,v) in enumerate(nearby_fermated_sorted_dict, 1)])
         text = 'Ho trovato *1 fermata* ' if fermate_number==1 else 'Ho trovato *{} fermate* '.format(fermate_number)
         text += "in prossimità dalla posizione inserita:\n"
-        text += '\n'.join('{}. {}: {}'.format(num, f, format_distance(v['dist']))
+        text += '\n'.join('{}. {}: {}'.format(num, routing_util.getStopFromFeramtaKey(f), format_distance(v['dist']))
                           for num, (f,v) in enumerate(nearby_fermated_sorted_dict,1))
     else:
         img_url = None

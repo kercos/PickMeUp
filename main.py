@@ -262,24 +262,32 @@ def broadcastUserIdList(sender, msg, userIdList, blackList_sender):
 # Restart All
 # ---------
 
-def restartAll(qry = None, curs=None):
+def restartAll(qry = None):
     from google.appengine.ext.db import datastore_errors
-    from main_exception import deferredSafeHandleException
-    #return
     if qry is None:
         qry = Person.query()
-    users, next_curs, more = qry.fetch_page(50, start_cursor=curs)
-    try:
-        for p in users:
-            if p.enabled:
-                restart(p)
-            sleep(0.1)
-    except datastore_errors.Timeout:
-        sleep(1)
-        deferredSafeHandleException(restartAll, qry, curs)
-        return
-    if more:
-        deferredSafeHandleException(restartAll, qry, curs)
+    qry = qry.order(Person._key)  # _MultiQuery with cursors requires __key__ order
+
+    more = True
+    cursor = None
+    total = 0
+
+    while more:
+        users, cursor, more = qry.fetch_page(100, start_cursor=cursor)
+        try:
+            for p in users:
+                if p.enabled:
+                    if p.state == RESTART_STATE:
+                        continue
+                    #logging.debug('Restarting {}'.format(p.chat_id))
+                    total += 1
+                    restart(p)
+                sleep(0.1)
+        except datastore_errors.Timeout:
+            msg = '❗ datastore_errors. Timeout in broadcast :('
+            tell_admin(msg)
+
+    logging.debug('Restarted {} users.'.format(total))
 
 # ================================
 # UTILIITY TELL FUNCTIONS
@@ -406,6 +414,9 @@ def dealWithUniversalCommands(p, input):
         elif input == '/restartAll':
             deferredSafeHandleException(restartAll)
             return True
+        elif input == '/restartAllNotInInitialState':
+            deferredSafeHandleException(restartAll)
+            return True
         elif input == '/testSpeech':
             redirectToState(p, 8)
             return True
@@ -498,7 +509,7 @@ def goToState1(p, **kwargs):
                            '   ∙ Seleziona uno dei *tuoi percorsi*:\n{}\n\n'.format(percorsiCmds)
             kb = utility.makeListOfList(routing_util.SORTED_ZONE_WITH_STOP_IF_SINGLE)
         elif stage == 1:
-            logging.debug('Sorting fermate in {}'.format(PASSAGGIO_PATH[0]))
+            #logging.debug('Sorting fermate in {}'.format(PASSAGGIO_PATH[0]))
             fermate = routing_util.SORTED_STOPS_IN_ZONA(PASSAGGIO_PATH[0])
             kb = utility.makeListOfList(fermate)
             if len(fermate) == 1:
@@ -535,6 +546,7 @@ def goToState1(p, **kwargs):
         p.setLastKeyboard(kb)
         send_message(p, msg, kb)
     else:
+        #logging.debug("Stage:{}, Input:'{}'".format(stage,input))
         kb = p.getLastKeyboard()
         if stage == 0 and input.startswith(params.PERCORSO_COMMAND_PREFIX):
             chosen_percorso = p.getPercorsoFromCommand(input)
@@ -558,14 +570,17 @@ def goToState1(p, **kwargs):
                 choices.extend(routing_util.FERMATE.keys())
                 choices = list(set(choices))
             '''
-            choices = routing_util.STOPS
-            if input not in flat_kb: # text input
-                input, perfectMatch = utility.matchInputToChoices(input, choices)
-                if input:
-                    if not perfectMatch:
-                        msg = 'Hai inserito: {}'.format(input)
-                        send_message(p, msg)
-                    input = routing_util.getFermataKeyFromStop(input)
+            choices = flat_kb if stage==1 or stage==3 else routing_util.STOPS
+            #logging.debug('Location: {}'.format(location))
+            if input:
+                if input not in flat_kb: # text input
+                    input, perfectMatch = utility.matchInputToChoices(input, choices)
+                    if input:
+                        if not perfectMatch:
+                            msg = 'Hai inserito: {}'.format(input)
+                            send_message(p, msg)
+                        if stage == 0 or stage == 2:
+                            input = routing_util.getFermataKeyFromStop(input)
             elif voice:
                 file_id = voice['file_id']
                 duration = int(voice['duration'])
@@ -591,6 +606,7 @@ def goToState1(p, **kwargs):
                         input = routing_util.getFermataKeyFromStop(input)
             elif location and (stage==0 or stage==2):
                 lat, lon = location['latitude'], location['longitude']
+                logging.debug('Received location: {}'.format([lat,lon]))
                 p.setLocation(lat, lon)
                 nearby_fermated_sorted_dict = routing_util.getFermateNearPosition(lat, lon, radius=4)
                 if not nearby_fermated_sorted_dict:
@@ -599,7 +615,8 @@ def goToState1(p, **kwargs):
                     send_message(p, msg, kb)
                     return
                 input = nearby_fermated_sorted_dict[0][0]
-                msg = "🗺📌 Hai scelto: {}".format(input)
+                stop = routing_util.getStopFromFeramtaKey(input)
+                msg = "🗺📌 La fermata più vicina alla posizione inserita è: {}".format(stop)
                 send_message(p, msg)
                 sendWaitingAction(p, sleep_time=1)
             if input:
