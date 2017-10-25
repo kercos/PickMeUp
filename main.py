@@ -247,14 +247,14 @@ def broadcast(sender, msg, qry = None, restart_user=False,
         send_message(sender, msg_debug)
     #return total, enabledCount, disabled
 
-def broadcastUserIdList(sender, msg, userIdList, blackList_sender):
+def broadcastUserIdList(sender, msg, userIdList, blackList_sender, markdown):
     for id in userIdList:
         p = person.getPersonById(id)
         if not p.enabled:
             continue
         if blackList_sender and sender and p.getId() == sender.getId():
             continue
-        send_message(p, msg, sleepDelay=True)
+        send_message(p, msg, markdown=markdown, sleepDelay=True)
 
 
 
@@ -1214,11 +1214,13 @@ def goToState14(p, **kwargs):
             redirectToState(p, 12)
         else:
             PASSAGGIO_INFO = p.getTmpPassaggioInfo()
-            #PASSAGGIO_PATH = PASSAGGIO_INFO['path']
-            #percorso_short = routing_util.encodePercorsoFromQuartetShort(*PASSAGGIO_PATH)
+            PASSAGGIO_PATH = PASSAGGIO_INFO['path']
+            percorso_short = routing_util.encodePercorsoShortFromQuartet(*PASSAGGIO_PATH)
             autisti_list_ids = PASSAGGIO_INFO['autisti_list_ids']
-            request_msg = "📨 Richiesta da parte di @{}:\n{}".format(p.username, input)
-            broadcastUserIdList(p, request_msg, autisti_list_ids, blackList_sender=True)
+            request_msg = "📨 Richiesta da parte di @{} interessata al percorso\n{}\n\nMessaggio:{}\n\n" \
+                          "Ti preghiamo di contattare direttamente l'utente " \
+                          "se sei disponibile ad offire un passaggio".format(p.username, percorso_short, input)
+            broadcastUserIdList(p, request_msg, autisti_list_ids, blackList_sender=True, markdown=False)
             msg = '✅ Il tuo messaggio è stato inviato!\nSe ci sono autisti disponibili verrai ricontattato/a.'
             send_message(p, msg, hide_keyboard=True, markdown=False)
             sendWaitingAction(p, sleep_time=2)
