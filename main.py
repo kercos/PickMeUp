@@ -1711,7 +1711,7 @@ app = webapp2.WSGIApplication([
     ('/telegram_get_webhook_info', main_telegram.GetWebhookInfo),
     ('/telegram_delete_webhook', main_telegram.DeleteWebhook),
     (key.FACEBOOK_WEBHOOK_PATH, main_fb.WebhookHandler),
-    (key.TELEGRAM_WEBHOOK_PATH, main_telegram.WebhookHandler),
+    (key.TELEGRAM_WEBHOOK_PATH, main_telegram.WebhookHandler)
 ], debug=True)
 
 possibles = globals().copy()

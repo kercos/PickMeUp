@@ -227,7 +227,7 @@ class MeHandler(webapp2.RequestHandler):
 
 class SetWebhookHandler(webapp2.RequestHandler):
     def get(self):
-        allowed_updates = ["message", "inline_query", "chosen_inline_result", "callback_query"]
+        allowed_updates = ["message", "edited_message", "inline_query", "chosen_inline_result", "callback_query"]
         data = {
             'url': key.TELEGRAM_WEBHOOK_URL,
             'allowed_updates': json.dumps(allowed_updates),
