@@ -422,6 +422,13 @@ def dealWithUniversalCommands(p, input):
             p = Person.get_by_id(p_id)
             main_fb.sendMessageWithList(p, 'Prova lista template', ['one','twp','three','four'])
             return True
+        elif input == '/testUnderscore':
+            p = person.getPersonById('T_116534064')
+            tellMaster("User info with markdown: {}".format(
+                p.getFirstNameLastNameUserName(escapeMarkdown=True)), markdown=True)
+            tellMaster("User info without markdown: {}".format(
+                p.getFirstNameLastNameUserName(escapeMarkdown=False)), markdown=False)
+            return True
         elif input == '/restartAll':
             deferredSafeHandleException(restartAll)
             return True
@@ -1688,7 +1695,7 @@ def dealWithUserInteraction(chat_id, name, last_name, username, application, tex
               "a contattarci cliccando su @kercos".format(name_safe)
         send_message(p, msg)
         restart(p)
-        tellMaster("New {} user: {}".format(application, p.getFirstNameLastNameUserName()))
+        tellMaster("New {} user: {}".format(application, p.getFirstNameLastNameUserName(escapeMarkdown=False)))
     else:
         # known user
         modified, was_disabled = p.updateUserInfo(name, last_name, username)
