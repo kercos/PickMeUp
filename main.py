@@ -1,5 +1,17 @@
 # -*- coding: utf-8 -*-
 
+# Set up requests
+# see https://cloud.google.com/appengine/docs/standard/python/issue-requests#issuing_an_http_request
+import requests_toolbelt.adapters.appengine
+requests_toolbelt.adapters.appengine.monkeypatch()
+from google.appengine.api import urlfetch
+urlfetch.set_default_fetch_deadline(20)
+#ignore warnings
+import warnings
+import urllib3.contrib.appengine
+warnings.filterwarnings('ignore', r'urllib3 is using URLFetch', urllib3.contrib.appengine.AppEnginePlatformWarning)
+
+
 import main_fb
 import main_telegram
 
@@ -21,7 +33,6 @@ import webapp2
 ########################
 WORK_IN_PROGRESS = False
 ########################
-
 
 # ================================
 # ================================
@@ -480,7 +491,7 @@ def goToState0(p, **kwargs):
 # needs: input, firstCall, passaggio_type
 # ================================
 def goToState1(p, **kwargs):
-    import speech
+    #import speech
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     firstCall = kwargs['firstCall'] if 'firstCall' in kwargs.keys() else False
     if firstCall:
@@ -561,7 +572,7 @@ def goToState1(p, **kwargs):
             else:
                 tellInputNonValido(p, kb)
         else:
-            voice = kwargs['voice'] if 'voice' in kwargs.keys() else None
+            #voice = kwargs['voice'] if 'voice' in kwargs.keys() else None
             location = kwargs['location'] if 'location' in kwargs.keys() else None
             flat_kb = utility.flatten(kb)
             '''                        
@@ -581,29 +592,29 @@ def goToState1(p, **kwargs):
                             send_message(p, msg)
                         if stage == 0 or stage == 2:
                             input = routing_util.getFermataKeyFromStop(input)
-            elif voice:
-                file_id = voice['file_id']
-                duration = int(voice['duration'])
-                if duration > 5:
-                    msg = "❗🙉 L'audio è troppo lungo, riprova!"
-                    send_message(p, msg, kb)
-                    return
-                else:
-                    transcription = speech.getTranscriptionTelegram(file_id, choices)
-                    input, perfectMatch = utility.matchInputToChoices(transcription, choices)
-                    if input is None:
-                        if transcription:
-                            msg = "❗🙉 Non ho capito, " \
-                                  "scegli un posto dalla lista qua sotto.".format(transcription)
-                        else:
-                            msg = "❗🙉 Ho capito: '{}' ma non è un posto che conosco, " \
-                                  "scegli un posto dalla lista qua sotto.".format(transcription)
-                        send_message(p, msg, kb)
-                        return
-                    else:
-                        msg = " 🎤 Hai scelto: {}".format(input)
-                        send_message(p, msg)
-                        input = routing_util.getFermataKeyFromStop(input)
+            # elif voice:
+            #     file_id = voice['file_id']
+            #     duration = int(voice['duration'])
+            #     if duration > 5:
+            #         msg = "❗🙉 L'audio è troppo lungo, riprova!"
+            #         send_message(p, msg, kb)
+            #         return
+            #     else:
+            #         transcription = speech.getTranscriptionTelegram(file_id, choices)
+            #         input, perfectMatch = utility.matchInputToChoices(transcription, choices)
+            #         if input is None:
+            #             if transcription:
+            #                 msg = "❗🙉 Non ho capito, " \
+            #                       "scegli un posto dalla lista qua sotto.".format(transcription)
+            #             else:
+            #                 msg = "❗🙉 Ho capito: '{}' ma non è un posto che conosco, " \
+            #                       "scegli un posto dalla lista qua sotto.".format(transcription)
+            #             send_message(p, msg, kb)
+            #             return
+            #         else:
+            #             msg = " 🎤 Hai scelto: {}".format(input)
+            #             send_message(p, msg)
+            #             input = routing_util.getFermataKeyFromStop(input)
             elif location and (stage==0 or stage==2):
                 lat, lon = location['latitude'], location['longitude']
                 logging.debug('Received location: {}'.format([lat,lon]))
@@ -1524,7 +1535,7 @@ def goToState7(p, **kwargs):
 # ================================
 
 def goToState8(p, **kwargs):
-    import speech
+    #import speech
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     giveInstruction = input is None
     kb = [[BOTTONE_INIZIO]]
@@ -1532,18 +1543,18 @@ def goToState8(p, **kwargs):
         msg = 'Prova a dire qualcosa...'
         send_message(p, msg, kb)
     else:
-        voice = kwargs['voice'] if 'voice' in kwargs.keys() else None
+        #voice = kwargs['voice'] if 'voice' in kwargs.keys() else None
         if input == BOTTONE_INIZIO:
             restart(p)
-        elif voice:
-            # telegram
-            file_id = voice['file_id']
-            duration = int(voice['duration'])
-            if duration > 5:
-                text = 'Audio troppo lungo.'
-            else:
-                text = speech.getTranscriptionTelegram(file_id, choices = ())
-            send_message(p, text)
+        # elif voice:
+        #     # telegram
+        #     file_id = voice['file_id']
+        #     duration = int(voice['duration'])
+        #     if duration > 5:
+        #         text = 'Audio troppo lungo.'
+        #     else:
+        #         text = speech.getTranscriptionTelegram(file_id, choices = ())
+        #     send_message(p, text)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
