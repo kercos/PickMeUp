@@ -6,11 +6,12 @@ import requests_toolbelt.adapters.appengine
 requests_toolbelt.adapters.appengine.monkeypatch()
 from google.appengine.api import urlfetch
 urlfetch.set_default_fetch_deadline(20)
-#ignore warnings
-import warnings
-import urllib3.contrib.appengine
-warnings.filterwarnings('ignore', r'urllib3 is using URLFetch', urllib3.contrib.appengine.AppEnginePlatformWarning)
 
+#disable warnings
+import requests
+requests.packages.urllib3.disable_warnings(
+    requests.packages.urllib3.contrib.appengine.AppEnginePlatformWarning
+)
 
 import main_fb
 import main_telegram

@@ -18,8 +18,12 @@ import requests
 # Telegram Send Request
 # ================================
 def sendRequest(p, url, data, debugInfo):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     from main import tell_admin
     try:
+        default_timeout = urlfetch.get_default_fetch_deadline()
+        logging.info('default_timeout: {}'.format(default_timeout))
         resp = requests.post(url, data)
         logging.info('Response: {}'.format(resp.text))
         respJson = json.loads(resp.text)
