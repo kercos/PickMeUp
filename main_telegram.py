@@ -101,6 +101,8 @@ def send_message(p, msg, kb=None, markdown=True, inline_keyboard=False, one_time
 # ================================
 
 def sendLocation(chat_id, latitude, longitude, kb=None):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     try:
         data = {
             'chat_id': chat_id,
@@ -122,6 +124,8 @@ def sendLocation(chat_id, latitude, longitude, kb=None):
 # ================================
 
 def sendVoice(chat_id, file_id):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     try:
         data = {
             'chat_id': chat_id,
@@ -138,6 +142,8 @@ def sendVoice(chat_id, file_id):
 # ================================
 
 def sendPhotoViaUrlOrId(chat_id, url_id, kb=None):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     try:
         if kb:
             replyMarkup = {  # ReplyKeyboardMarkup
@@ -157,6 +163,8 @@ def sendPhotoViaUrlOrId(chat_id, url_id, kb=None):
         report_exception()
 
 def sendPhotoFromPngImage(chat_id, img_data, filename='image.png'):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     try:
         img = [('photo', (filename, img_data, 'image/png'))]
         data = {
@@ -173,6 +181,8 @@ def sendPhotoFromPngImage(chat_id, img_data, filename='image.png'):
 # ================================
 
 def sendDocument(chat_id, file_id):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     try:
         data = {
             'chat_id': chat_id,
@@ -184,6 +194,8 @@ def sendDocument(chat_id, file_id):
         report_exception()
 
 def sendExcelDocument(chat_id, sheet_tables, filename='file'):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     import utility
     try:
         xlsData = utility.convert_data_to_spreadsheet(sheet_tables)
@@ -202,6 +214,8 @@ def sendExcelDocument(chat_id, sheet_tables, filename='file'):
 # ================================
 
 def sendWaitingAction(chat_id, action_tipo='typing', sleep_time=None):
+    from google.appengine.api import urlfetch
+    urlfetch.set_default_fetch_deadline(20)
     try:
         data = {
             'chat_id': chat_id,
