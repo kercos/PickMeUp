@@ -3,22 +3,17 @@
 from google.appengine.ext import ndb
 from utility import convertToUtfIfNeeded
 
-class RideOffer(ndb.Model): #ndb.Model
+class RideOfferNew(ndb.Model): #ndb.Model
     driver_id = ndb.StringProperty()
     driver_name_lastname = ndb.StringProperty()
     driver_username = ndb.StringProperty()
 
     percorso = ndb.StringProperty() # mapping to percorso entry key (percorso.py)
 
-    # TO DELETE: routes_info = ndb.PickleProperty()
-
-    # TO DELETE: fermate_intermedie = ndb.StringProperty(repeated=True) # set of fermate intermedie
-    # TO DELETE: percorsi_passeggeri_compatibili = ndb.StringProperty(repeated=True) # set of percorsi compatibili
-
     registration_datetime = ndb.DateTimeProperty()  # for programmati only time applies
-    active = ndb.BooleanProperty() # when a ride is removed it remains in the db a disactivated
-
     start_datetime = ndb.DateTimeProperty()  # for programmati only time applies
+    
+    active = ndb.BooleanProperty(default=True) # when a ride is removed it remains in the db a disactivated
     disactivation_datetime = ndb.DateTimeProperty()
 
     time_mode = ndb.StringProperty()  # BOTTONE_ADESSO, BOTTONE_OGGI, BOTTONE_PROX_GIORNI, BOTTONE_PROGRAMMATO
@@ -125,17 +120,16 @@ class RideOffer(ndb.Model): #ndb.Model
         return '\n'.join(msg)
 
 
-def addRideOffer(driver, start_datetime, percorso,
+def addRideOfferNew(driver, start_datetime, percorso,
                  time_mode, programmato, giorni):
     import date_time_util as dtu
-    o = RideOffer(
+    o = RideOfferNew(
         driver_id = driver.getId(),
         driver_name_lastname = driver.getFirstNameLastName(),
         driver_username=driver.getUsername(),
         start_datetime=start_datetime,
         percorso=percorso,
         registration_datetime = dtu.removeTimezone(dtu.nowCET()),
-        active = True,
         time_mode = time_mode,
         programmato = programmato,
         programmato_giorni = giorni
@@ -168,16 +162,16 @@ def filterAndSortOffersAbitualiAndPerDay(offers):
         results_days.sort(key=lambda x: x.getDepartingTimeStr())
     return result_abituali, result_per_day
 
-def getActiveRideOffersQry():
+def getActiveRideOfferNewsQry():
     import params
     import date_time_util as dtu
     from datetime import timedelta
-    qry = RideOffer.query(
+    qry = RideOfferNew.query(
         ndb.AND(
-            RideOffer.active == True,
+            RideOfferNew.active == True,
             ndb.OR(
-                RideOffer.programmato == True,
-                RideOffer.start_datetime >= dtu.removeTimezone(dtu.nowCET()) - timedelta(
+                RideOfferNew.programmato == True,
+                RideOfferNew.start_datetime >= dtu.removeTimezone(dtu.nowCET()) - timedelta(
                     minutes=params.TIME_TOLERANCE_MIN)
             )
         )
@@ -185,48 +179,38 @@ def getActiveRideOffersQry():
     return qry
 
 
-def getActiveRideOffersCountInWeek():
-    offers = getActiveRideOffersQry().fetch()
+def getActiveRideOfferNewsCountInWeek():
+    offers = getActiveRideOfferNewsQry().fetch()
     offers_abituali, offers_list_per_day = filterAndSortOffersAbitualiAndPerDay(offers)
     count = len(offers_abituali) + sum([len(d) for d in offers_list_per_day])
     return count
 
-def getRideOfferInsertedLastDaysQry(days):
+def getRideOfferNewInsertedLastDaysQry(days):
     import date_time_util as dtu
     from datetime import timedelta
-    return RideOffer.query(
-        RideOffer.start_datetime >= dtu.removeTimezone(dtu.nowCET()) - timedelta(days=days)
+    return RideOfferNew.query(
+        RideOfferNew.start_datetime >= dtu.removeTimezone(dtu.nowCET()) - timedelta(days=days)
     )
 
 
-'''
-def getActiveRideOffersProgrammatoQry():
-    return RideOffer.query(
-        ndb.AND(
-            RideOffer.active == True,
-            RideOffer.programmato == True,
-        )
-    )
-'''
-
-def getActiveRideOffersDriver(driver_id):
+def getActiveRideOfferNewsDriver(driver_id):
     import params
     import date_time_util as dtu
     from datetime import timedelta
     now_with_tolerance = dtu.removeTimezone(dtu.nowCET()) - timedelta(minutes=params.TIME_TOLERANCE_MIN)
-    qry = RideOffer.query(
+    qry = RideOfferNew.query(
         ndb.AND(
-            RideOffer.active == True,
-            RideOffer.driver_id == driver_id,
+            RideOfferNew.active == True,
+            RideOfferNew.driver_id == driver_id,
             ndb.OR(
-                RideOffer.programmato == True,
-                RideOffer.start_datetime >= now_with_tolerance
+                RideOfferNew.programmato == True,
+                RideOfferNew.start_datetime >= now_with_tolerance
             )
         )
-    ).order(RideOffer.start_datetime)
+    ).order(RideOfferNew.start_datetime)
     return qry.fetch()
 
-def getActiveRideOffersSortedAbitualiAndPerDay(percorso_passeggero):
+def getActiveRideOfferNewsSortedAbitualiAndPerDay(percorso_passeggero):
     import route
     import params
     import date_time_util as dtu
@@ -237,13 +221,13 @@ def getActiveRideOffersSortedAbitualiAndPerDay(percorso_passeggero):
     percorsi_compatibili = route.getPercorsiCompatibili(percorso_passeggero)
 
     if percorsi_compatibili:
-        qry_rides = RideOffer.query(
+        qry_rides = RideOfferNew.query(
             ndb.AND(
-                RideOffer.percorso.IN(percorsi_compatibili),
-                RideOffer.active == True,
+                RideOfferNew.percorso.IN(percorsi_compatibili),
+                RideOfferNew.active == True,
                 ndb.OR(
-                    RideOffer.programmato == True,
-                    RideOffer.start_datetime >= nowWithTolerance
+                    RideOfferNew.programmato == True,
+                    RideOfferNew.start_datetime >= nowWithTolerance
                 )
             )
         )
@@ -254,14 +238,14 @@ def getActiveRideOffersSortedAbitualiAndPerDay(percorso_passeggero):
 
 
 # also expired ones
-def getDriversIdQryWithCompatibleRideOffers(percorso_passeggero):
+def getDriversIdQryWithCompatibleRideOfferNews(percorso_passeggero):
     import route
     percorsi_compatibili = route.getPercorsiCompatibili(percorso_passeggero)
     if percorsi_compatibili:
-        qry_rides = RideOffer.query(
-            RideOffer.percorso.IN(percorsi_compatibili),
-            #projection=[RideOffer.driver_username], distinct=True
-            projection=[RideOffer.driver_id], #distinct=True
+        qry_rides = RideOfferNew.query(
+            RideOfferNew.percorso.IN(percorsi_compatibili),
+            #projection=[RideOfferNew.driver_username], distinct=True
+            projection=[RideOfferNew.driver_id], #distinct=True
         )
         return qry_rides
         #usernames = ['@{}'.format(r.driver_username) for r in qry_rides.fetch()]
@@ -270,17 +254,17 @@ def getDriversIdQryWithCompatibleRideOffers(percorso_passeggero):
     #    return []
 
 
-def getActiveRideOffers():
+def getActiveRideOfferNews():
     import params
     import date_time_util as dtu
     from datetime import timedelta
 
-    qry = RideOffer.query(
+    qry = RideOfferNew.query(
         ndb.AND(
-            RideOffer.active == True,
+            RideOfferNew.active == True,
             ndb.OR(
-                RideOffer.programmato == True,
-                RideOffer.start_datetime >= dtu.removeTimezone(dtu.nowCET()) - timedelta(minutes=params.TIME_TOLERANCE_MIN)
+                RideOfferNew.programmato == True,
+                RideOfferNew.start_datetime >= dtu.removeTimezone(dtu.nowCET()) - timedelta(minutes=params.TIME_TOLERANCE_MIN)
                 # might be redundant as the filter is also applied afterwards
             )
         )
