@@ -141,26 +141,32 @@ def sendVoice(chat_id, file_id):
 # SEND PHOTO
 # ================================
 
-def sendPhotoViaUrlOrId(chat_id, url_id, kb=None):
+def sendPhotoViaUrlOrId(p, url_id, kb=None, sleepDelay=False):
     from google.appengine.api import urlfetch
     urlfetch.set_default_fetch_deadline(20)
-    try:
-        if kb:
-            replyMarkup = {  # ReplyKeyboardMarkup
-                'keyboard': kb,
-                'resize_keyboard': True,
-            }
-        else:
-            replyMarkup = {}
-        data = {
-            'chat_id': chat_id,
-            'photo': url_id,
-            'reply_markup': json.dumps(replyMarkup),
+    #try:
+    if kb:
+        replyMarkup = {  # ReplyKeyboardMarkup
+            'keyboard': kb,
+            'resize_keyboard': True,
         }
-        resp = requests.post(key.TELEGRAM_API_URL + 'sendPhoto', data)
-        logging.info('Response: {}'.format(resp.text))
-    except:
-        report_exception()
+    else:
+        replyMarkup = {}
+    data = {
+        'chat_id': p.chat_id,
+        'photo': url_id,
+        'reply_markup': json.dumps(replyMarkup),
+    }
+    #resp = requests.post(key.TELEGRAM_API_URL + 'sendPhoto', data)
+    #logging.info('Response: {}'.format(resp.text))
+    debugInfo = "sendPhotoViaUrlOrId function with url_id={}".format(url_id)
+    success = sendRequest(p, key.TELEGRAM_API_URL + 'sendPhoto', data, debugInfo)
+    #except:
+    #    report_exception()
+    if success:
+        if sleepDelay:
+            sleep(0.1)
+        return True
 
 def sendPhotoFromPngImage(chat_id, img_data, filename='image.png'):
     from google.appengine.api import urlfetch

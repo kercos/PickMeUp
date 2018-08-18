@@ -108,7 +108,7 @@ BOTTONE_ATTIVA_NOTIFICHE_TUTTE = "🔔🔔🔔 ATTIVA TUTTE"
 BOTTONE_DISTATTIVA_NOTIFICHE = "🔕 DISATTIVA TUTTE"
 BOTTONE_ATTIVA_NOTIFICHE_PERCORSI = "🔔🛣 MIEI PERCORSI"
 BOTTONE_ELIMINA = "🗑 ELIMINA"
-BOTTONE_REGOLAMENTO_ISTRUZIONI = "📜 REGOLAMENTO e ISTRUZIONI"
+BOTTONE_REGOLAMENTO_ISTRUZIONI = "📜 ISTRUZIONI"
 BOTTONE_STATS = "📊 STATISTICHE"
 BOTTONE_CONTATTACI = "📩 CONTATTACI"
 BOTTONE_ADMIN = "🔑 Admin"
@@ -161,20 +161,21 @@ def send_photo_png_data(p, file_data, filename):
             kb_flat = utility.flatten(kb)[:11] # no more than 11
             main_fb.sendMessageWithQuickReplies(p, msg, kb_flat)
 
-def send_photo_url(p, url, kb=None):
+def send_photo_url(p, url, kb=None, sleepDelay=False):
     if p.isTelegramUser():
-        main_telegram.sendPhotoViaUrlOrId(p.chat_id, url, kb)
+        return main_telegram.sendPhotoViaUrlOrId(p, url, kb, sleepDelay)
     else:
         #main_fb.sendPhotoUrl(p.chat_id, url)
         import requests
         file_data = requests.get(url).content
-        main_fb.sendPhotoData(p, file_data, 'file.png')
+        success = main_fb.sendPhotoData(p, file_data, 'file.png')
         # send message to show kb
         kb = p.getLastKeyboard()
         if kb:
             msg = 'Opzioni disponibili:'
             kb_flat = utility.flatten(kb)[:11]  # no more than 11
             main_fb.sendMessageWithQuickReplies(p, msg, kb_flat)
+        return success
 
 def sendDocument(p, file_id):
     if p.isTelegramUser():
@@ -273,6 +274,41 @@ def broadcastUserIdList(sender, msg, userIdList, blackList_sender, markdown):
             continue
         send_message(p, msg, markdown=markdown, sleepDelay=True)
 
+def broadcastImgUrl(sender, img_url):
+    return
+    from google.appengine.ext.db import datastore_errors
+    from google.appengine.api.urlfetch_errors import InternalTransientError
+
+    qry = Person.query().order(Person._key)  # _MultiQuery with cursors requires __key__ order
+
+    more = True
+    cursor = None
+    total, enabledCount = 0, 0
+
+    while more:
+        users, cursor, more = qry.fetch_page(100, start_cursor=cursor)
+        for p in users:
+            try:
+                #if p.getId() not in key.TESTER_IDS:
+                #    continue
+                total += 1
+                if send_photo_url(p, img_url, sleepDelay=True):  # p.enabled
+                    enabledCount += 1
+            except datastore_errors.Timeout:
+                msg = '❗ datastore_errors. Timeout in broadcast :('
+                tell_admin(msg)
+                # deferredSafeHandleException(broadcast, sender, msg, qry, restart_user, curs, enabledCount, total, blackList_ids, sendNotification)
+                return
+            except InternalTransientError:
+                msg = 'Internal Transient Error, waiting for 1 min.'
+                tell_admin(msg)
+                sleep(60)
+                continue
+
+    disabled = total - enabledCount
+    msg_debug = BROADCAST_COUNT_REPORT.format(total, enabledCount, disabled)
+    logging.debug(msg_debug)
+    send_message(sender, msg_debug)
 
 
 # ---------
@@ -391,6 +427,11 @@ def dealWithUniversalCommands(p, input):
                 logging.debug("Test broadcast " + msg)
                 send_message(p, msg)
                 return True
+        if input.startswith('/testImgUrl '):
+            photo_url = input.split(' ', 1)[1]
+            if photo_url:
+                send_photo_url(p, photo_url)
+                return True
         if input.startswith('/broadcast '):
             text = input.split(' ', 1)[1]
             if text:
@@ -398,14 +439,20 @@ def dealWithUniversalCommands(p, input):
                 logging.debug("Starting to broadcast " + msg)
                 deferredSafeHandleException(broadcast, p, msg)
                 return True
-        elif input.startswith('/restartBroadcast '):
+        if input.startswith('/restartBroadcast '):
             text = input.split(' ', 1)[1]
             if text:
                 msg = '🔔 *Messaggio da PickMeUp* 🔔\n\n' + text
                 logging.debug("Starting to broadcast and restart" + msg)
                 deferredSafeHandleException(broadcast, p, msg, restart_user=False)
                 return True
-        elif input.startswith('/textUser '):
+        if input.startswith('/broadcastImgUrl '):
+            img_url = input.split(' ', 1)[1]
+            if img_url:
+                logging.debug("Starting to broadcast img url {}".format(img_url))
+                deferredSafeHandleException(broadcastImgUrl, p, img_url)
+                return True
+        if input.startswith('/textUser '):
             p_id, text = input.split(' ', 2)[1]
             if text:
                 p = Person.get_by_id(p_id)
@@ -416,32 +463,32 @@ def dealWithUniversalCommands(p, input):
                     msg_admin = 'Problems sending message to {}'.format(p.getFirstNameLastNameUserName())
                     tell_admin(msg_admin)
                 return True
-        elif input.startswith('/restartUser '):
+        if input.startswith('/restartUser '):
             p_id = input.split(' ')[1]
             p = Person.get_by_id(p_id)
             restart(p)
             msg_admin = 'User restarted: {}'.format(p.getFirstNameLastNameUserName())
             tell_admin(msg_admin)
             return True
-        elif input == '/testlist':
+        if input == '/testlist':
             p_id = key.FEDE_FB_ID
             p = Person.get_by_id(p_id)
             main_fb.sendMessageWithList(p, 'Prova lista template', ['one','twp','three','four'])
             return True
-        elif input == '/testUnderscore':
+        if input == '/testUnderscore':
             p = person.getPersonById('T_116534064')
             tellMaster("User info with markdown: {}".format(
                 p.getFirstNameLastNameUserName(escapeMarkdown=True)), markdown=True)
             tellMaster("User info without markdown: {}".format(
                 p.getFirstNameLastNameUserName(escapeMarkdown=False)), markdown=False)
             return True
-        elif input == '/restartAll':
+        if input == '/restartAll':
             deferredSafeHandleException(restartAll)
             return True
-        elif input == '/restartAllNotInInitialState':
+        if input == '/restartAllNotInInitialState':
             deferredSafeHandleException(restartAll)
             return True
-        elif input == '/testSpeech':
+        if input == '/testSpeech':
             redirectToState(p, 8)
             return True
     return False
@@ -1232,6 +1279,7 @@ def goToState14(p, **kwargs):
     else:
         kb = p.getLastKeyboard()
         flat_kb = utility.flatten(kb)
+        flat_kb.append(BOTTONE_ANNULLA)
         #
         if input in flat_kb:
             assert input == BOTTONE_INDIETRO
@@ -1579,7 +1627,7 @@ def goToState8(p, **kwargs):
 def goToState9(p, **kwargs):
     input = kwargs['input'] if 'input' in kwargs.keys() else None
     giveInstruction = input is None
-    kb = [[BOTTONE_INIZIO], [BOTTONE_REGOLAMENTO_ISTRUZIONI], [BOTTONE_FERMATE], [BOTTONE_CONTATTACI, BOTTONE_STATS]]
+    kb = [[BOTTONE_INIZIO], [BOTTONE_REGOLAMENTO_ISTRUZIONI, BOTTONE_FERMATE], [BOTTONE_CONTATTACI, BOTTONE_STATS]]
     if giveInstruction:
         msg_lines = ['*Informazioni*']
         msg_lines.append('*PickMeUp* è un servizio di carpooling attualmente in sperimentazione nella provincia di Trento.')
@@ -1635,7 +1683,7 @@ def goToState91(p, **kwargs):
             redirectToState(p, 9)
             return
         if input == BOTTONE_MAPPA:
-            with open('data/pmu_map_low.png') as file_data:
+            with open('data/PickMeUp_Valli_low.png') as file_data:
                 send_photo_png_data(p, file_data, 'mappa.png')
             sendWaitingAction(p, sleep_time=1)
             repeatState(p)
@@ -1679,7 +1727,7 @@ def goToState92(p, **kwargs):
         if input == BOTTONE_INDIETRO:
             redirectToState(p, 9)
         else:
-            msg_admin = '📩📩📩\nMessaggio di feedback da {}:\n{}'.format(p.getFirstNameLastNameUserName(), input)
+            msg_admin = '📩📩📩\nMessaggio di feedback da {}:\n{}'.format(p.getFirstNameLastNameUserName(False), input)
             tell_admin(msg_admin)
             msg = 'Grazie per il tuo messaggio, ti contatteremo il prima possibile.'
             send_message(p, msg)
