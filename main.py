@@ -1099,7 +1099,9 @@ def goToState12(p, **kwargs):
             elif input==BOTTONE_PROGRAMMATI:
                 redirectToState(p, 122)
             else:
-                assert input == BOTTONE_INVIA_RICHIESTA
+                if input != BOTTONE_INVIA_RICHIESTA:
+                    logging.debug("flat_kb: {}".format(flat_kb))                
+                    assert False
                 if not p.isTelegramUser:
                     msg = '⚠️ La possibilità di mandare richieste è consentita solo a utenti registrati su Telegram. ' \
                           'Ti preghiamo di installare Telegram e aggiungere il bot ' \
@@ -1549,7 +1551,9 @@ def goToState33(p, **kwargs):
                 p.increaseCursor()
                 repeatState(p, put=True)
             else:
-                assert input==BOTTONE_ELIMINA
+                if input!=BOTTONE_ELIMINA:
+                    logging.warning("In main:1555 input={} kb={}".format(input, kb))
+                    assert False
                 p.deleteMyOfferAtCursor()
                 repeatState(p, put=True)
         else:
@@ -1740,14 +1744,14 @@ def dealWithUserInteraction(chat_id, name, last_name, username, application, tex
                             location, contact, photo, document, voice):
 
     p = person.getPersonByChatIdAndApplication(chat_id, application)
-    name_safe = ' {}'.format(name) if name else ''
+    name_safe = ' {}'.format(utility.escapeMarkdown(name)) if name else ''
 
     if p is None:
         p = person.addPerson(chat_id, name, last_name, username, application)
         msg = " 😀 Ciao{},\nbenvenuto/a In PickMeUp!\n" \
               "Se hai qualche domanda o suggerimento non esitare " \
               "a contattarci cliccando su @kercos".format(name_safe)
-        send_message(p, msg)
+        send_message(p, msg, markdown=False)
         restart(p)
         tellMaster("New {} user: {}".format(application, p.getFirstNameLastNameUserName(escapeMarkdown=False)))
     else:

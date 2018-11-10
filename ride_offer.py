@@ -2,6 +2,7 @@
 
 from google.appengine.ext import ndb
 from utility import convertToUtfIfNeeded
+import logging
 
 class RideOffer(ndb.Model): #ndb.Model
     driver_id = ndb.StringProperty()
@@ -43,7 +44,10 @@ class RideOffer(ndb.Model): #ndb.Model
 
     def getRouteEntry(self):
         from route import Route
-        return Route.get_by_id(self.percorso)
+        result = Route.get_by_id(self.percorso)
+        if result is None:
+            logging.warning('None route with percorso {} for ride_offer: {}'.format(self.percorso, self))
+        return result
 
     def getDepartingTimeStr(self):
         import date_time_util as dtu
