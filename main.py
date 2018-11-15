@@ -1643,7 +1643,7 @@ def goToState9(p, **kwargs):
         if input == BOTTONE_INIZIO:
             restart(p)
         elif input == BOTTONE_REGOLAMENTO_ISTRUZIONI:
-            msg = 'https://docs.google.com/document/d/1hiP_rQKOiiPZwvqtZF3k0cGdqS1SZqs3VV7TIx9_s8o'
+            msg = 'https://telegra.ph/PickMeUp---Regolamento-e-Istruzioni-11-11'
             send_message(p, msg, kb, markdown=False, disable_web_page_preview=False)
         elif input == BOTTONE_FERMATE:
             redirectToState(p, 91)
