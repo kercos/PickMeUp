@@ -123,9 +123,11 @@ class RideOffer(ndb.Model): #ndb.Model
             else:
                 username = '@{}'.format(username)
             msg.append('*Autista*: {} {}'.format(self.getDriverName(), username))
-            avg_distance, avg_duration = self.getAvgDistanceDuration()
-            msg.append('*Distanza*: {}'.format(avg_distance))
+            avg_distance_km_str, avg_duration = self.getAvgDistanceDuration()
+            msg.append('*Distanza*: {}'.format(avg_distance_km_str))
             msg.append('*Durata*: {}'.format(avg_duration))
+            cost = params.compute_cost(float(avg_distance_km_str.split()[0])) 
+            msg.append('*Contributo* (consigliato): {:.2f} €'.format(cost))
         return '\n'.join(msg)
 
 

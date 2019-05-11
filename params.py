@@ -21,6 +21,12 @@ NOTIFICATIONS_MODES = [NOTIFICATION_MODE_ALL, NOTIFICATION_MODE_PERCORSI, NOTIFI
 
 PERCORSO_COMMAND_PREFIX = '/percorso_'
 
+COST_PER_0_KM = 1.0
+COST_PER_10_KM = 1.5
+
+def compute_cost(distance):
+    return COST_PER_0_KM + (COST_PER_10_KM-COST_PER_0_KM)/10*distance
+
 def getCommand(prefix, suffix, escapeMarkdown=True):
     import utility
     result = "{}{}".format(prefix, suffix)
