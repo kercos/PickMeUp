@@ -26,6 +26,7 @@ from person import Person
 import routing_util
 import date_time_util as dtu
 import ride_offer
+import ride_search
 import route
 import params
 import webapp2
@@ -1044,11 +1045,11 @@ def goToState12(p, **kwargs):
         #logging.debug('Offers abituali: {}'.format(offers_abituali))
         #logging.debug('Offers per day: {}'.format(offers_per_day))
 
-        offers_abituali_count = len(offers_abituali)
-        offers_per_day_count = sum([len(l) for l in offers_per_day])
+        number_results_abituali = len(offers_abituali)
+        number_results_programmati = sum([len(l) for l in offers_per_day])
         autisti_list_qry = ride_offer.getDriversIdQryWithCompatibleRideOffers(percorso_key)
         autisti_list_ids = set([x.driver_id for x in autisti_list_qry.fetch()]) if autisti_list_qry else []
-        autisti_list_count = len(autisti_list_ids)
+        autisti_list_count = len(autisti_list_ids)        
 
         logging.debug('autisti_list_ids: {}'.format(autisti_list_ids))
 
@@ -1059,33 +1060,39 @@ def goToState12(p, **kwargs):
         percorso_short = routing_util.encodePercorsoShortFromQuartet(*PASSAGGIO_PATH)
         msg = "🛣 *Il tuo percorso*:\n{}\n\n".format(percorso_short)
 
-        if offers_abituali_count > 0 or offers_per_day_count > 0 or autisti_list_count > 0:
-            #PASSAGGIO_INFO['found_programmati'] = offers_per_day_count > 0
-            #PASSAGGIO_INFO['found_abituali'] = offers_abituali_count > 0
+        if number_results_abituali > 0 or number_results_programmati > 0 or autisti_list_count > 0:
+            #PASSAGGIO_INFO['found_programmati'] = number_results_programmati > 0
+            #PASSAGGIO_INFO['found_abituali'] = number_results_abituali > 0
             kb = [[BOTTONE_ANNULLA]]
             second_row = []
-            if offers_per_day_count > 0:
+            if number_results_programmati > 0:
                 second_row.append(BOTTONE_PROGRAMMATI)
-            if offers_abituali_count > 0:
+            if number_results_abituali > 0:
                 second_row.append(BOTTONE_ABITUALI)
             if second_row:
                 kb.append(second_row)
             if autisti_list_count > 0:
                 kb.append([BOTTONE_INVIA_RICHIESTA])
-            pass_prog_string = '*passaggio programmato*' if offers_per_day_count == 1 else '*passaggi programmati*'
-            pass_abit_string = '*passaggio abituale*' if offers_abituali_count == 1 else '*passaggi abituali*'
+            pass_prog_string = '*passaggio programmato*' if number_results_programmati == 1 else '*passaggi programmati*'
+            pass_abit_string = '*passaggio abituale*' if number_results_abituali == 1 else '*passaggi abituali*'
             autisti_string = '*autista*' if autisti_list_count == 1 else '*autisti*'
             msg += "Trovati per questa tratta:\n"
-            msg += "🚘📆 *{}* {} nei prossimi 7 giorni\n".format(offers_per_day_count, pass_prog_string)
-            msg += "🚘🌀 *{}* {}\n".format(offers_abituali_count, pass_abit_string)
+            msg += "🚘📆 *{}* {} nei prossimi 7 giorni\n".format(number_results_programmati, pass_prog_string)
+            msg += "🚘🌀 *{}* {}\n".format(number_results_abituali, pass_abit_string)
             msg += "🚘👤 *{}* {} a cui puoi inviare una richiesta".format(autisti_list_count, autisti_string)
             p.setLastKeyboard(kb)
-            send_message(p, msg, kb)
+            send_message(p, msg, kb)            
         else:
             msg += "🙊 *Nessun passaggio trovato compatibile con la tratta inserita.*"
             send_message(p, msg)
             sendWaitingAction(p, sleep_time=1)
             restart(p)
+    
+        # adding ride search to db
+        timestamp = dtu.nowCET(removeTimezone = True)
+        ride_search.addRideSearch(p, timestamp, percorso_key, 
+            number_results_programmati, number_results_abituali, autisti_list_count)
+    
     else:
         if input == BOTTONE_ANNULLA:
             restart(p)
@@ -1116,6 +1123,8 @@ def goToState12(p, **kwargs):
                     redirectToState(p, 14)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
+
+
 
 # ================================
 # GO TO STATE 121: Cerca Passaggio - Risultati Abituali
@@ -1245,7 +1254,7 @@ def goToState1221(p, **kwargs):
         if len(offers_chosen_day)>1:
             kb.append([PREV_ICON, NEXT_ICON])
         if p.getLastState():
-            kb.append([BOTTONE_INDIETRO])
+            kb.extend([[BOTTONE_INDIETRO],[BOTTONE_INIZIO]])
         p.setLastKeyboard(kb)
         send_message(p, msg, kb)
     else:
@@ -1254,7 +1263,9 @@ def goToState1221(p, **kwargs):
             #if input == BOTTONE_INIZIO:
             #    restart(p)
             #    return
-            if input==BOTTONE_INDIETRO:
+            if input == BOTTONE_INIZIO:
+                restart(p)
+            elif input==BOTTONE_INDIETRO:
                 redirectToState(p, p.getLastState())
             elif input==PREV_ICON:
                 p.decreaseCursor()
@@ -1650,15 +1661,17 @@ def goToState9(p, **kwargs):
         elif input == BOTTONE_STATS:
             msg = utility.unindent(
                 '''
-                👤 Utenti: {}
+                👤 Utenti registrati: {}
                 
                 🚘 Passaggi disponibili nei prossimi 7 giorni: {}
-                📆🚘 Offerte inserite negli ultimi 7 giorni: {}                                
+                📆🚘 Offerte inserite negli ultimi 7 giorni: {}
+                👍🚘 Richieste fatte negli ultimi 7 giorni: {}
                 '''
             ).format(
                 person.getPeopleCount(),
                 ride_offer.getActiveRideOffersCountInWeek(),
-                ride_offer.getRideOfferInsertedLastDaysQry(7).count()
+                ride_offer.getRideOfferInsertedLastDaysQry(7).count(),
+                ride_search.getRideSearchInsertedLastDaysQry(7).count()
             )
             send_message(p, msg)
         elif input == BOTTONE_CONTATTACI:
