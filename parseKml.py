@@ -39,7 +39,7 @@ def encodeFermataKey(zona, fermata):
 
 def parseMap():
     import key
-    r = requests.get(key.map_url)
+    r = requests.get(key.map_kml)
     kml_xml = r.content
     root = ET.fromstring(kml_xml)
     #root = ET.parse('data/PickMeUp.kml') #getroot()
