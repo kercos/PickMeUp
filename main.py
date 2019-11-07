@@ -94,7 +94,7 @@ BOTTONE_FERMATE = "🚏 FERMATE"
 BOTTONE_MAPPA = "🗺 MAPPA COMPLETA"
 BOTTENE_OFFRI_PASSAGGIO = "🚘 OFFRI"
 BOTTENE_CERCA_PASSAGGIO = "👍 CERCA"
-BOTTONE_IMPOSTAZIONI = "⚙ IMPOSTAZIONI"
+BOTTONE_IMPOSTAZIONI = "⚙️ IMPOSTAZIONI"
 BOTTONE_AGGIUNGI_PERCORSO = "➕ AGGIUNGI PERCORSO"
 BOTTONE_RIMUOVI_PERCORSO = "➖ RIMUOVI PERCORSO"
 BOTTONE_PERCORSI = "🛣 PERCORSI PREFERITI"
@@ -1302,7 +1302,7 @@ def goToState14(p, **kwargs):
             PASSAGGIO_PATH = PASSAGGIO_INFO['path']
             percorso_short = routing_util.encodePercorsoShortFromQuartet(*PASSAGGIO_PATH)
             autisti_list_ids = PASSAGGIO_INFO['autisti_list_ids']
-            request_msg = "📨 Richiesta da parte di @{} interessata al percorso\n{}\n\nMessaggio:{}\n\n" \
+            request_msg = "📨 Richiesta da parte di @{} interessato/a al percorso\n{}\n\nMessaggio:{}\n\n" \
                           "Ti preghiamo di contattare direttamente l'utente " \
                           "se sei disponibile ad offire un passaggio".format(p.username, percorso_short, input)
             broadcastUserIdList(p, request_msg, autisti_list_ids, blackList_sender=True, markdown=False)

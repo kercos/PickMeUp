@@ -1,6 +1,6 @@
 #REAL VERSION
-application: pickmeup-telegram
-version: 11
+# application: pickmeup-telegram
+# version: 11
 
 #TEST DEV
 #application: tiramisu-telegram
