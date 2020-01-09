@@ -541,9 +541,12 @@ def goToState0(p, **kwargs):
                 redirectToState(p, 3)
             elif input == BOTTONE_INFO:
                 redirectToState(p, 9)
-            else:
-                assert input == BOTTONE_ADMIN
+            elif input == BOTTONE_ADMIN:
                 redirectToState(p, 7)
+            else:
+                # user must have old keyboard, restart user
+                msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                restart(p, msg)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
@@ -760,11 +763,14 @@ def goToState11(p, **kwargs):
             PASSAGGIO_INFO['mode'] = input
             if input == BOTTONE_SETTIMANALE:
                 redirectToState(p, 112)
-            else:
-                assert input == BOTTONE_ABITUALE
+            elif input == BOTTONE_ABITUALE:
                 sendWaitingAction(p)
                 finalizeOffer(p, PASSAGGIO_PATH, date_time=None, time_mode=input, programmato=True)
                 restart(p)
+            else:
+                # user must have old keyboard, restart user
+                msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                restart(p, msg)
 
         else:
             tellInputNonValidoUsareBottoni(p, kb)
@@ -798,9 +804,12 @@ def goToState111(p, **kwargs):
                 restart(p)
             elif input == BOTTONE_OGGI:
                 redirectToState(p, 1111)
-            else:
-                assert input == BOTTONE_PROX_GIORNI
+            elif input == BOTTONE_PROX_GIORNI:
                 redirectToState(p, 1112)
+            else:
+                # user must have old keyboard, restart user
+                msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                restart(p, msg)                            
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
@@ -1107,8 +1116,9 @@ def goToState12(p, **kwargs):
                 redirectToState(p, 122)
             else:
                 if input != BOTTONE_INVIA_RICHIESTA:
-                    logging.debug("flat_kb: {}".format(flat_kb))                
-                    assert False
+                    msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                    restart(p, msg)
+                    return
                 if not p.isTelegramUser:
                     msg = '⚠️ La possibilità di mandare richieste è consentita solo a utenti registrati su Telegram. ' \
                           'Ti preghiamo di installare Telegram e aggiungere il bot ' \
@@ -1295,8 +1305,12 @@ def goToState14(p, **kwargs):
         flat_kb.append(BOTTONE_ANNULLA)
         #
         if input in flat_kb:
-            assert input == BOTTONE_INDIETRO
-            redirectToState(p, 12)
+            if input == BOTTONE_INDIETRO:
+                redirectToState(p, 12)
+            else:
+                # user must have old keyboard, restart user
+                msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                restart(p, msg)
         else:
             PASSAGGIO_INFO = p.getTmpPassaggioInfo()
             PASSAGGIO_PATH = PASSAGGIO_INFO['path']
@@ -1339,9 +1353,12 @@ def goToState3(p, **kwargs):
                 redirectToState(p, 31)
             elif input == BOTTONE_NOTIFICHE:
                 redirectToState(p, 32)
-            else:
-                assert input == BOTTONE_ELIMINA_OFFERTE
+            elif input == BOTTONE_ELIMINA_OFFERTE:
                 redirectToState(p, 33, firstCall=True)
+            else:
+                # user must have old keyboard, restart user
+                msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                restart(p, msg)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
@@ -1381,9 +1398,12 @@ def goToState31(p, **kwargs):
                     redirectToState(p, 31)
                 else:
                     redirectToState(p, 1, firstCall=True, passaggio_type='aggiungi_preferiti')
-            else:
-                assert input == BOTTONE_RIMUOVI_PERCORSO
+            elif input == BOTTONE_RIMUOVI_PERCORSO:
                 redirectToState(p, 312)
+            else:
+                # user must have old keyboard, restart user
+                msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                restart(p, msg)
         else:
             tellInputNonValidoUsareBottoni(p, kb)
 
@@ -1563,8 +1583,10 @@ def goToState33(p, **kwargs):
                 repeatState(p, put=True)
             else:
                 if input!=BOTTONE_ELIMINA:
-                    logging.warning("In main:1555 input={} kb={}".format(input, kb))
-                    assert False
+                    # user must have old keyboard, restart user
+                    msg = "Hai premuto un pulsante non valido (forse hai una versione vecchia). Ti rimando nella schermata iniziale."
+                    restart(p, msg)
+                    return
                 p.deleteMyOfferAtCursor()
                 repeatState(p, put=True)
         else:
